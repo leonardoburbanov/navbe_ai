@@ -1,0 +1,10 @@
+[importlinter]
+root_package = navbe
+
+[importlinter:contract:1]
+name = "domains must not depend on mcp_app or api"
+type = layers
+layers =
+    navbe.mcp_app | navbe.api
+    navbe.domains
+    navbe.core

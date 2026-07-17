@@ -1,0 +1,58 @@
+[project]
+name = "navbe"
+version = "0.1.0"
+description = "Local-first workflow orchestration engine operated by AI agents via MCP"
+readme = "README.md"
+authors = [
+    { name = "Leonardo Burbano", email = "leofr7nco@hotmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "duckdb>=1.5.4",
+    "fastapi>=0.139.2",
+    "fastmcp>=2.0",
+    "httpx>=0.28.1",
+    "jmespath>=1.1.0",
+    "langgraph>=1.2.9",
+    "langgraph-checkpoint-sqlite>=3.1.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy[asyncio]>=2.0.51",
+    "uvicorn>=0.51.0",
+]
+
+[project.scripts]
+navbe = "navbe.main:main"
+
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.13",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "pytest-httpserver>=1.1.5",
+    "respx>=0.23.1",
+    "ruff>=0.15.22",
+    "ty>=0.0.60",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --cov=src/navbe --cov-report=term-missing"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ty.environment]
+python-version = "3.12"
