@@ -25,6 +25,7 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 | --- | --- |
 | `src/navbe/core/` | Config, async DB engine/session, base exceptions |
 | `src/navbe/domains/steps/` | Standalone step contracts, registry, service, implementations |
+| `src/navbe/domains/connectors/` | Standalone connector contracts, registry, service, HTTP implementation |
 | `src/navbe/domains/` | Other domains arrive in later EPICs |
 | `src/navbe/api/` | FastAPI surface (stub) |
 | `src/navbe/mcp_app/` | FastMCP surface (stub) |
@@ -35,5 +36,6 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [Delivery](delivery.md) — EPIC process and DoD rules
 - [EPIC 0](epics/epic-0.md) — bootstrap status
 - [EPIC 1](epics/epic-1.md) — steps domain status
+- [EPIC 2](epics/epic-2.md) — connectors domain status
 - [Architecture](architecture.md) — layers and domain pattern
 - [Operations](operations.md) — commands and CI

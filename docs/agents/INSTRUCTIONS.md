@@ -13,6 +13,7 @@ Navbe is a local-first workflow orchestration engine operated by AI agents over 
 - Delivery / EPIC process — [delivery.md](delivery.md) and status under `epics/`
 - `core/` — Settings (`NAVBE_` env), SQLAlchemy async engine/session helpers, `NavbeError` hierarchy
 - `steps` domain — standalone Step contracts, registry, service, and built-in implementations
+- `connectors` domain — standalone Connector contracts, registry, service, HTTP implementation
 - Domain package pattern — `models.py` / `interfaces.py` / `service.py` (even before domain folders exist)
 - Layering — `.importlinter` contract: `mcp_app` | `api` → `domains` → `core`
 - Tooling — `uv`, ruff, ty, pytest, lint-imports, CI workflow

@@ -35,8 +35,9 @@ Each `src/navbe/domains/<name>/`:
 Implemented domain:
 
 - `steps` — standalone step contracts, registry, service, and built-in implementations.
+- `connectors` — standalone connector contracts, registry, service, and HTTP implementation.
 
-Planned domain names: `connectors`, `flows`, `execution`, `secrets`, `catalog`. Do not document their APIs until implemented.
+Planned domain names: `flows`, `execution`, `secrets`, `catalog`. Do not document their APIs until implemented.
 
 ## Steps domain
 
@@ -49,6 +50,15 @@ Built-ins registered in `StepRegistry`:
 - `transform`
 - `llm_call`
 - `router`
+
+## Connectors domain
+
+`connectors` wraps external systems and is consumed later by steps through
+`ctx.flow_vars["connectors"][name]`. Tests instantiate connectors directly.
+
+Built-ins registered in `ConnectorRegistry`:
+
+- `http`
 
 ## Persistence split (target)
 
