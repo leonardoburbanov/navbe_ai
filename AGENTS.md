@@ -6,6 +6,10 @@ Agents sync data (e.g. Langfuse traces → DuckDB/CSV), schedule recurring flows
 
 This file is always-on guidance for coding agents working in this repo.
 
+For deeper project context (architecture, operations, wiki scope), start at
+[docs/agents/quickstart.md](docs/agents/quickstart.md). Keep this file for
+must-follow rules only; put narrative docs in `docs/agents/`.
+
 ---
 
 ## Stack
@@ -199,3 +203,12 @@ Prefer querying a synced DuckDB destination over calling the live source for ana
 - Commit only when the user asks.
 - Do not push unless asked.
 - Keep commits small and focused on why, not a file laundry list.
+
+---
+
+## Documentation
+
+- Agent wiki entry: [docs/agents/quickstart.md](docs/agents/quickstart.md)
+- Wiki scope (do not rewrite unless asked): [docs/agents/INSTRUCTIONS.md](docs/agents/INSTRUCTIONS.md)
+- When an EPIC merges behavior, update the matching `docs/agents/` page in the same change set when docs would otherwise be wrong.
+- Do not add OpenWiki or other doc-generator tooling unless explicitly requested.
