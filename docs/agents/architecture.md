@@ -24,7 +24,7 @@ Domains must not import `mcp_app` or `api`. Outer layers may depend on domains a
 | `navbe.core.database` | `create_engine` / `get_session` — no tables yet |
 | `navbe.core.exceptions` | `NavbeError` and subclasses; domains must not raise bare `Exception`/`ValueError` |
 
-## Domain pattern (when packages appear)
+## Domain pattern
 
 Each `src/navbe/domains/<name>/`:
 
@@ -32,7 +32,23 @@ Each `src/navbe/domains/<name>/`:
 - `interfaces.py` — `Protocol` ports
 - `service.py` — use-cases depending on Protocols only
 
-Planned domain names: `steps`, `connectors`, `flows`, `execution`, `secrets`, `catalog`. Do not document their APIs until implemented.
+Implemented domain:
+
+- `steps` — standalone step contracts, registry, service, and built-in implementations.
+
+Planned domain names: `connectors`, `flows`, `execution`, `secrets`, `catalog`. Do not document their APIs until implemented.
+
+## Steps domain
+
+`steps` is intentionally independent from Flow / execution / MCP. Tests construct `StepContext` directly and call `await step.run(ctx)`.
+
+Built-ins registered in `StepRegistry`:
+
+- `http_request`
+- `set_var`
+- `transform`
+- `llm_call`
+- `router`
 
 ## Persistence split (target)
 

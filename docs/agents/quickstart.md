@@ -24,12 +24,16 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 | Path | Role today |
 | --- | --- |
 | `src/navbe/core/` | Config, async DB engine/session, base exceptions |
-| `src/navbe/domains/` | Empty package; domains arrive in later EPICs |
+| `src/navbe/domains/steps/` | Standalone step contracts, registry, service, implementations |
+| `src/navbe/domains/` | Other domains arrive in later EPICs |
 | `src/navbe/api/` | FastAPI surface (stub) |
 | `src/navbe/mcp_app/` | FastMCP surface (stub) |
 | `tests/` | Unit + integration; shared fixtures in `conftest.py` |
 
 ## Next reads
 
+- [Delivery](delivery.md) — EPIC process and DoD rules
+- [EPIC 0](epics/epic-0.md) — bootstrap status
+- [EPIC 1](epics/epic-1.md) — steps domain status
 - [Architecture](architecture.md) — layers and domain pattern
 - [Operations](operations.md) — commands and CI
