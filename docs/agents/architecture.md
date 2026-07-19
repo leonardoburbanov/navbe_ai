@@ -36,8 +36,9 @@ Implemented domain:
 
 - `steps` — standalone step contracts, registry, service, and built-in implementations.
 - `connectors` — standalone connector contracts, registry, service, and HTTP implementation.
+- `secrets` — env-backed secret refs consumed by connector resolution.
 
-Planned domain names: `flows`, `execution`, `secrets`, `catalog`. Do not document their APIs until implemented.
+Planned domain names: `flows`, `execution`, `catalog`. Do not document their APIs until implemented.
 
 ## Steps domain
 
@@ -59,6 +60,12 @@ Built-ins registered in `StepRegistry`:
 Built-ins registered in `ConnectorRegistry`:
 
 - `http`
+
+## Secrets domain
+
+v0.1 resolves `{"$secret": "KEY"}` leaves from process env / `.env`.
+`ConnectorService` injects `SecretsService(EnvSecretsProvider())` when wired.
+Missing keys raise `NotFoundError` with the key name and a hint — never a secret value.
 
 ## Persistence split (target)
 

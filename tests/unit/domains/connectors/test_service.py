@@ -6,14 +6,7 @@ import navbe.domains.connectors.implementations  # noqa: F401
 from navbe.core.exceptions import NotFoundError
 from navbe.domains.connectors.implementations.http import HTTPConnector
 from navbe.domains.connectors.service import ConnectorService
-
-
-class FakeSecretsService:
-    """Fake secret resolver for connector service tests."""
-
-    async def resolve(self, name: str) -> str:
-        """Return a deterministic fake secret value."""
-        return {"API_KEY": "sk-123"}[name]
+from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
 
 
 def test_get_config_schema_returns_valid_json_schema() -> None:
@@ -34,8 +27,11 @@ async def test_resolve_without_secrets_service_passes_config_through() -> None:
     assert connector.config.timeout == 5
 
 
-async def test_resolve_replaces_secret_ref() -> None:
-    """Secret refs are resolved recursively before instantiation."""
+async def test_resolve_with_real_secrets_service_replaces_ref(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Real SecretsService resolves $secret refs before connector build."""
+    monkeypatch.setenv("API_KEY", "sk-123")
     instance_config = {
         "type": "http",
         "config": {
@@ -43,11 +39,11 @@ async def test_resolve_replaces_secret_ref() -> None:
             "headers": {"Authorization": {"$secret": "API_KEY"}},
         },
     }
-    connector = await ConnectorService(secrets_service=FakeSecretsService()).resolve(
-        "bot",
-        instance_config,
-    )
+    connector = await ConnectorService(
+        secrets_service=SecretsService(EnvSecretsProvider()),
+    ).resolve("bot", instance_config)
 
+    assert isinstance(connector, HTTPConnector)
     assert connector.config.headers == {"Authorization": "sk-123"}
 
 

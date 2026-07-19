@@ -56,4 +56,5 @@ Prefer code as source of truth. No speculative docs for packages that do not exi
 - [EPIC 0 — Bootstrap](epics/epic-0.md) — done (installable project, core, CI)
 - [EPIC 1 — Steps Domain](epics/epic-1.md) — done (standalone step implementations)
 - [EPIC 2 — Connectors Domain](epics/epic-2.md) — done (standalone HTTP connector)
-- EPIC 3+ — not drafted here yet; wait for an explicit brief
+- [EPIC 3 — Secrets Domain](epics/epic-3.md) — done (env-backed secret refs)
+- EPIC 4+ — not drafted here yet; wait for an explicit brief

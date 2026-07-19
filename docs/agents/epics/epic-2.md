@@ -35,5 +35,6 @@
 ## Notes
 
 - `ConnectorService._resolve_secrets` accepts an injected duck-typed `secrets_service`; real secrets domain wiring lands in EPIC 3.
++ `ConnectorService._resolve_secrets` delegates to `SecretsService.resolve_config` (wired in EPIC 3).
 - `test_connection()` returns `False` on network errors instead of raising.
 - Steps consume connectors later via `ctx.flow_vars["connectors"][name]` — not wired in this EPIC.

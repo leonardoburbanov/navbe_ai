@@ -1,16 +1,13 @@
 """Use-cases for resolving connector instances."""
 
-from typing import Any, Protocol, cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, cast
 
 from navbe.domains.connectors.registry import ConnectorRegistry
 
-
-class SecretsService(Protocol):
-    """Minimal secret resolver injected until the secrets domain exists."""
-
-    async def resolve(self, name: str) -> str:
-        """Return the plaintext value for a secret name."""
-        ...
+if TYPE_CHECKING:
+    from navbe.domains.secrets.service import SecretsService
 
 
 class ConnectorService:
@@ -37,17 +34,8 @@ class ConnectorService:
         resolved_config = await self._resolve_secrets(instance_config["config"])
         return connector_cls(resolved_config)
 
-    async def _resolve_secrets(self, config: Any) -> Any:
-        """Recursively replace ``{\"$secret\": \"X\"}`` refs with resolved values."""
+    async def _resolve_secrets(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Delegate secret-ref walking to ``SecretsService`` when injected."""
         if self._secrets is None:
             return config
-
-        if isinstance(config, dict):
-            if set(config) == {"$secret"} and isinstance(config["$secret"], str):
-                return await self._secrets.resolve(config["$secret"])
-            return {key: await self._resolve_secrets(value) for key, value in config.items()}
-
-        if isinstance(config, list):
-            return [await self._resolve_secrets(item) for item in config]
-
-        return config
+        return await self._secrets.resolve_config(config)
