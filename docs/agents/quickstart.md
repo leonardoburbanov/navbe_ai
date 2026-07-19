@@ -44,5 +44,6 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 5](epics/epic-5.md) — execution domain status
 - [EPIC 6](epics/epic-6.md) — catalog domain status
 - [EPIC 7](epics/epic-7.md) — MCP app status
+- [EPIC 8](epics/epic-8.md) — FastAPI wiring status
 - [Architecture](architecture.md) — layers and domain pattern
 - [Operations](operations.md) — commands and CI

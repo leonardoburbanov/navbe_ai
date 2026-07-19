@@ -105,6 +105,13 @@ and resources. Domain errors become FastMCP `ToolError` with a JSON payload
 (`error` / `code` / `message` / `details`). `flow.run` returns immediately;
 `RunService.start` schedules execution with `asyncio.create_task`.
 
+## Wiring
+
+`dependencies.py` is the only production constructor for concrete services
+(lru_cache singletons; `clear_dependency_caches()` for tests). `main.create_app()`
+mounts REST under `/api/v1/*` and FastMCP at `/mcp` via `http_app(path="/")`
+with the MCP lifespan (and SQLite `flows_index` create_all on startup).
+
 ## Persistence split (target)
 
 - **SQLite** (`aiosqlite` + SQLAlchemy async) — app/control-plane state
