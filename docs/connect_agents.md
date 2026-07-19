@@ -46,6 +46,36 @@ uv run python scripts/fake_sales_bot.py
 
 ## 4A. Connecting Claude Desktop
 
+Navbe ships a Claude **plugin** (MCP + skill) under [`claude-plugin/`](../claude-plugin/).
+Prefer installing that package. Manual MCP-only config is the fallback below.
+
+### Option A — Install the Claude plugin (recommended)
+
+Package layout:
+
+```text
+claude-plugin/
+├── .claude-plugin/plugin.json
+├── .mcp.json                 # local navbe-mcp (edit path if needed)
+└── skills/navbe-flows/SKILL.md
+```
+
+1. Edit `claude-plugin/.mcp.json` so `--directory` is your absolute Navbe checkout
+   (default in-repo is `C:/NavbeAI/navbe_ai_v0.1`).
+2. In Claude Desktop: **Customize → Plugins → +** → upload
+   `claude-plugin/navbe-plugin.zip` (or the `claude-plugin/` folder if your build
+   accepts a directory).
+3. Enable the plugin. Confirm the **navbe** connector/tools appear
+   (`navbe_howto`, `catalog_steps`, `flow_list`, …).
+4. Confirm skill **navbe-flows** is listed under **Customize → Skills** (or via `/`).
+
+**Skill-only (if you already have MCP configured):** upload
+`claude-plugin/navbe-flows-skill.zip` under **Customize → Skills → +**.
+
+Fully quit and restart Claude Desktop after install so local MCP respawns.
+
+### Option B — MCP only (manual config)
+
 **Config file location**
 
 | OS | Path |
@@ -85,13 +115,18 @@ so it re-spawns the subprocess.
 **Verify:** Claude’s MCP / connector UI shows **navbe** as connected, with tools
 including `navbe_howto`, `catalog_steps`, `flow_list`, `flow_create`, `flow_run`.
 
+Still upload the **navbe-flows** skill (Option A skill-only) so Claude follows the
+discover → validate → create → ask → run loop automatically.
+
 ### Claude Desktop tip (important)
 
-Claude Desktop often exposes **tools** but not `navbe://` resources. Tell Claude:
+Claude Desktop often exposes **tools** but not `navbe://` resources. With the
+skill installed, Claude should call `catalog_steps` / `flow_list` on its own.
+If not, say:
 
 ```
-Call navbe_howto first, then catalog_steps and flow_list. Prefer tools over
-navbe:// resources. Ask me before flow_run.
+Use the navbe-flows skill. Call navbe_howto first, then catalog_steps and
+flow_list. Prefer tools over navbe:// resources. Ask me before flow_run.
 ```
 
 Or open the MCP prompt named `navbe_howto` if your Claude build lists prompts.

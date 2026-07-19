@@ -114,6 +114,10 @@ Claude Desktop playbook: tool `navbe_howto`, resource `navbe://guide`, and
 prompt `navbe_howto` share one text (`mcp_app/guide.py`). Prefer the **tool**
 on Claude Desktop (resources/prompts are often not surfaced to the model).
 
+Claude packaging: [`claude-plugin/`](../../claude-plugin/) bundles local MCP
+(`.mcp.json`) + skill `navbe-flows` for Customize → Plugins / Skills. See
+[../connect_agents.md](../connect_agents.md).
+
 ## Wiring
 
 `dependencies.py` is the only production constructor for concrete services

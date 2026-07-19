@@ -1,0 +1,18 @@
+{
+  "name": "navbe",
+  "displayName": "Navbe",
+  "version": "0.1.0",
+  "description": "Local-first flow orchestration for Claude: discover catalogs, list/create/update flows, validate, and run with human confirmation via Navbe MCP.",
+  "author": {
+    "name": "Navbe"
+  },
+  "keywords": [
+    "navbe",
+    "mcp",
+    "workflows",
+    "flows",
+    "orchestration",
+    "local"
+  ],
+  "mcpServers": "./.mcp.json"
+}
