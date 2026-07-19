@@ -15,9 +15,18 @@ def create_mcp_server(
     run_service: RunService,
     catalog_service: CatalogService,
 ) -> FastMCP:
-    """Build a FastMCP server with flow tools and catalog resources."""
+    """Build a FastMCP server with flow/catalog tools and resources."""
     settings = get_settings()
     mcp = FastMCP(settings.mcp_server_name)
-    register_tools(mcp, flow_service=flow_service, run_service=run_service)
-    register_resources(mcp, catalog_service=catalog_service)
+    register_tools(
+        mcp,
+        flow_service=flow_service,
+        run_service=run_service,
+        catalog_service=catalog_service,
+    )
+    register_resources(
+        mcp,
+        catalog_service=catalog_service,
+        flow_service=flow_service,
+    )
     return mcp

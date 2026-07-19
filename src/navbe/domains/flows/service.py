@@ -40,6 +40,25 @@ class FlowService:
 
         return await self._repository.save(flow_spec)
 
+    async def update(self, flow_spec_dict: dict[str, Any]) -> FlowMetadata:
+        """Validate then overwrite an existing flow (archives prior version)."""
+        try:
+            flow_spec = FlowSpec.model_validate(flow_spec_dict)
+        except pydantic.ValidationError as exc:
+            raise ValidationError(
+                "Invalid FlowSpec structure",
+                details={"errors": exc.errors()},
+            ) from exc
+
+        result = self.validate(flow_spec)
+        if not result.valid:
+            raise ValidationError(
+                "FlowSpec failed graph validation",
+                details={"issues": [issue.model_dump() for issue in result.issues]},
+            )
+
+        return await self._repository.update(flow_spec)
+
     async def get(self, flow_id: str) -> FlowSpec:
         """Load a flow by id."""
         return await self._repository.get(flow_id)

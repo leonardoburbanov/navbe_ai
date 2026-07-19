@@ -1,4 +1,4 @@
-"""Tests for flow.resume tool."""
+"""Tests for flow_resume tool."""
 
 from datetime import UTC, datetime
 
@@ -27,7 +27,7 @@ async def test_flow_resume_approved_continues() -> None:
     server = make_server(run_service=run_service)
     async with Client(server) as client:
         result = await client.call_tool(
-            "flow.resume",
+            "flow_resume",
             {"run_id": "r1", "decision": {"approved": True}},
         )
     assert run_service.last_decision == {"approved": True}
@@ -48,7 +48,7 @@ async def test_flow_resume_rejected_returns_failed_state() -> None:
     server = make_server(run_service=run_service)
     async with Client(server) as client:
         result = await client.call_tool(
-            "flow.resume",
+            "flow_resume",
             {"run_id": "r1", "decision": {"approved": False}},
         )
     assert result.data["status"] == RunStatus.FAILED
@@ -66,7 +66,7 @@ async def test_flow_resume_run_not_paused_returns_structured_error() -> None:
     async with Client(server) as client:
         with pytest.raises(ToolError) as exc_info:
             await client.call_tool(
-                "flow.resume",
+                "flow_resume",
                 {"run_id": "r1", "decision": {"approved": True}},
             )
     payload = parse_tool_error(exc_info.value)

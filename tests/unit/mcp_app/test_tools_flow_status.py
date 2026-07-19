@@ -1,4 +1,4 @@
-"""Tests for flow.status tool."""
+"""Tests for flow_status tool."""
 
 from datetime import UTC, datetime
 
@@ -27,7 +27,7 @@ async def test_flow_status_returns_run_state_dict() -> None:
     run_service.states["r1"] = state
     server = make_server(run_service=run_service)
     async with Client(server) as client:
-        result = await client.call_tool("flow.status", {"run_id": "r1"})
+        result = await client.call_tool("flow_status", {"run_id": "r1"})
     assert result.data == state.model_dump(mode="json")
 
 
@@ -38,5 +38,5 @@ async def test_flow_status_unknown_run_id_returns_structured_error() -> None:
     server = make_server(run_service=run_service)
     async with Client(server) as client:
         with pytest.raises(ToolError) as exc_info:
-            await client.call_tool("flow.status", {"run_id": "ghost"})
+            await client.call_tool("flow_status", {"run_id": "ghost"})
     assert parse_tool_error(exc_info.value)["code"] == "not_found"

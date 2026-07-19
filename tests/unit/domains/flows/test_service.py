@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 import navbe.domains.steps.implementations  # noqa: F401
-from navbe.core.exceptions import ValidationError
+from navbe.core.exceptions import NotFoundError, ValidationError
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 from tests.unit.domains.flows.test_interfaces import FakeFlowRepository
@@ -78,3 +78,38 @@ async def test_list_delegates_to_repository() -> None:
     listed = await FlowService(repo).list()
     repo.list.assert_awaited_once()
     assert len(listed) == 1
+
+
+async def test_update_valid_flow_updates_via_repository() -> None:
+    """Valid update bumps version through repository.update."""
+    repo = FakeFlowRepository()
+    await repo.save(FlowSpec.model_validate(_demo_dict()))
+    payload = _demo_dict()
+    payload["name"] = "renamed"
+    meta = await FlowService(repo).update(payload)
+    assert meta.flow_id == "sales_bot_objection_test"
+    assert meta.version == 2
+    assert len(repo.updated) == 1
+    assert repo.flows["sales_bot_objection_test"].name == "renamed"
+
+
+async def test_update_missing_flow_raises_not_found() -> None:
+    """Unknown flow_id surfaces NotFoundError from the repository."""
+    repo = FakeFlowRepository()
+    with pytest.raises(NotFoundError):
+        await FlowService(repo).update(_demo_dict())
+
+
+async def test_update_graph_invalid_raises_before_repository() -> None:
+    """Graph validation failure does not call repository.update."""
+    repo = FakeFlowRepository()
+    await repo.save(FlowSpec.model_validate(_demo_dict()))
+    repo.update = AsyncMock(wraps=repo.update)
+    payload = _demo_dict()
+    payload["nodes"].append(
+        {"id": "orphan", "step_type": "set_var", "config": {"var_name": "x", "value_from": "x"}}
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        await FlowService(repo).update(payload)
+    assert any(issue["code"] == "orphan_node" for issue in exc_info.value.details["issues"])
+    repo.update.assert_not_called()

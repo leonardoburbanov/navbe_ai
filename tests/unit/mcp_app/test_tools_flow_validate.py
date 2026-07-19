@@ -1,4 +1,4 @@
-"""Tests for flow.validate tool."""
+"""Tests for flow_validate tool."""
 
 import copy
 import json
@@ -32,7 +32,7 @@ async def test_flow_validate_valid_spec_returns_valid_true() -> None:
     flow_service.validate = real.validate  # type: ignore[method-assign]
     server = make_server(flow_service=flow_service)
     async with Client(server) as client:
-        result = await client.call_tool("flow.validate", {"spec": _demo()})
+        result = await client.call_tool("flow_validate", {"spec": _demo()})
     assert result.data["valid"] is True
     assert result.data["issues"] == []
 
@@ -69,7 +69,7 @@ async def test_flow_validate_graph_issue_returns_valid_false() -> None:
         "edges": [],
     }
     async with Client(server) as client:
-        result = await client.call_tool("flow.validate", {"spec": spec})
+        result = await client.call_tool("flow_validate", {"spec": spec})
     assert result.data["valid"] is False
     assert result.data["issues"][0]["code"] == "orphan_node"
     assert result.data["issues"][0]["node_id"] == "orphan"
@@ -81,7 +81,7 @@ async def test_flow_validate_malformed_pydantic_shape_returns_structured_error()
     async with Client(server) as client:
         with pytest.raises(ToolError) as exc_info:
             await client.call_tool(
-                "flow.validate",
+                "flow_validate",
                 {
                     "spec": {
                         "flow_id": "broken",

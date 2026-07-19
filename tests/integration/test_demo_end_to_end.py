@@ -167,11 +167,11 @@ async def test_demo_flow_against_real_sales_bot(
             node["config"]["path"] = "/leads/lead-1/notes"
 
     async with Client(server) as client:
-        created = await client.call_tool("flow.create", {"spec": demo})
+        created = await client.call_tool("flow_create", {"spec": demo})
         flow_id = created.data["flow_id"]
 
         run = await client.call_tool(
-            "flow.run",
+            "flow_run",
             {
                 "flow_id": flow_id,
                 "initial_input": {
@@ -189,7 +189,7 @@ async def test_demo_flow_against_real_sales_bot(
                     *list(run_service._background_tasks),
                     return_exceptions=True,
                 )
-            status = await client.call_tool("flow.status", {"run_id": run_id})
+            status = await client.call_tool("flow_status", {"run_id": run_id})
             if status.data["status"] in ("completed", "failed"):
                 break
             await asyncio.sleep(0.2)

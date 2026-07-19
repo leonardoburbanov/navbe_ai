@@ -122,7 +122,8 @@ file lives under the project. Absolute paths also work.
 restart. Check **Settings → Tools & MCP** (or the MCP panel) and enable
 **navbe** if it is not auto-enabled.
 
-**Verify:** MCP/tools panel lists Navbe tools (`flow.create`, `flow.run`, …)
+**Verify:** MCP/tools panel lists Navbe tools (`catalog_steps`, `flow_list`,
+`flow_create`, `flow_run`, …)
 for the current Agent/Composer session.
 
 ---
@@ -140,17 +141,18 @@ price objection, and ask me before running it.
 
 ## 6. Expected agent behavior
 
-1. Reads `navbe://catalog/steps` and `navbe://catalog/connectors`
+1. Discovers types via `catalog_steps` / `catalog_connectors` (or
+   `navbe://catalog/*`) and existing flows via `flow_list`
 2. Builds a FlowSpec using registered types (`http_request`, `set_var`,
    `llm_call`, `router`, optionally `approval`)
-3. Calls `flow.validate`, then `flow.create`
+3. Calls `flow_validate`, then `flow_create` (or `flow_update` if editing)
 4. Asks: “I’ve created this flow as `<flow_id>`. Want me to run it?”
-5. On confirmation: `flow.run`, then polls `flow.status`
+5. On confirmation: `flow_run`, then polls `flow_status`
 6. Reports outcome and which branch was taken
 
 ### Client approval caveat (important)
 
-Navbe’s `flow.run` / `flow.status` split is designed so agents *can* ask before
+Navbe’s `flow_run` / `flow_status` split is designed so agents *can* ask before
 executing — but **Claude Desktop** and **Cursor** each have their own tool
 approval UX:
 
@@ -159,7 +161,7 @@ approval UX:
 | Claude Desktop | Often prompts per tool call by default |
 | Cursor | Depends on **Ask vs Agent** mode and Auto-Run / approval settings |
 
-If Cursor runs `flow.run` without asking, check the active mode / Auto-Run
+If Cursor runs `flow_run` without asking, check the active mode / Auto-Run
 setting before assuming a Navbe bug.
 
 ---

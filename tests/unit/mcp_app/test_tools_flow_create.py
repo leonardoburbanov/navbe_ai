@@ -1,4 +1,4 @@
-"""Tests for flow.create tool."""
+"""Tests for flow_create tool."""
 
 import pytest
 from fastmcp import Client
@@ -20,7 +20,7 @@ async def test_flow_create_success_returns_flow_id() -> None:
         "edges": [],
     }
     async with Client(server) as client:
-        result = await client.call_tool("flow.create", {"spec": spec})
+        result = await client.call_tool("flow_create", {"spec": spec})
     assert result.data == {
         "flow_id": "demo",
         "version": 1,
@@ -39,7 +39,7 @@ async def test_flow_create_invalid_spec_returns_structured_error() -> None:
     server = make_server(flow_service=flow_service)
     async with Client(server) as client:
         with pytest.raises(ToolError) as exc_info:
-            await client.call_tool("flow.create", {"spec": {"flow_id": "bad"}})
+            await client.call_tool("flow_create", {"spec": {"flow_id": "bad"}})
     payload = parse_tool_error(exc_info.value)
     assert payload["code"] == "validation_error"
     assert payload["details"]["issues"][0]["code"] == "orphan_node"

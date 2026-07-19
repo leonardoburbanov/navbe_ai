@@ -46,8 +46,10 @@ async def test_stdio_entrypoint_starts_and_responds_to_initialize(
         assert getattr(server_info, "name", None)
         tools = await client.list_tools()
         names = {tool.name for tool in tools}
-        assert "flow.create" in names
-        assert "flow.run" in names
+        assert "flow_create" in names
+        assert "flow_run" in names
+        assert "flow_list" in names
+        assert "catalog_steps" in names
 
 
 async def test_stdio_validate_and_create_minimal_flow(
@@ -73,11 +75,14 @@ async def test_stdio_validate_and_create_minimal_flow(
         cwd=str(ROOT),
     )
     async with Client(transport=transport) as client:
-        validation = await client.call_tool("flow.validate", {"spec": spec})
+        validation = await client.call_tool("flow_validate", {"spec": spec})
         assert validation.data["valid"] is True
 
-        created = await client.call_tool("flow.create", {"spec": spec})
+        created = await client.call_tool("flow_create", {"spec": spec})
         assert created.data["flow_id"] == "smoke_set_var"
+
+        listed = await client.call_tool("flow_list", {})
+        assert any(flow["flow_id"] == "smoke_set_var" for flow in listed.data["flows"])
 
 
 async def test_stdio_entrypoint_exits_cleanly_on_sigterm(

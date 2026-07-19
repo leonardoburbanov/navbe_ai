@@ -1,4 +1,4 @@
-"""Tests for flow.run tool."""
+"""Tests for flow_run tool."""
 
 import asyncio
 from typing import Any
@@ -18,7 +18,7 @@ from tests.unit.mcp_app.conftest import FakeCatalogService, FakeRunService, make
 
 
 async def test_flow_run_returns_run_id_without_blocking() -> None:
-    """flow.run returns before a slow engine.run finishes."""
+    """flow_run returns before a slow engine.run finishes."""
     release = asyncio.Event()
     entered = asyncio.Event()
 
@@ -49,7 +49,7 @@ async def test_flow_run_returns_run_id_without_blocking() -> None:
         FakeCatalogService(),  # type: ignore[arg-type]
     )
     async with Client(server) as client:
-        result = await client.call_tool("flow.run", {"flow_id": "slow", "initial_input": {}})
+        result = await client.call_tool("flow_run", {"flow_id": "slow", "initial_input": {}})
     assert result.data["status"] == "started"
     assert result.data["run_id"]
     await asyncio.wait_for(entered.wait(), timeout=1.0)
@@ -66,6 +66,6 @@ async def test_flow_run_unknown_flow_returns_structured_error() -> None:
     server = make_server(run_service=run_service)
     async with Client(server) as client:
         with pytest.raises(ToolError) as exc_info:
-            await client.call_tool("flow.run", {"flow_id": "nope"})
+            await client.call_tool("flow_run", {"flow_id": "nope"})
     payload = parse_tool_error(exc_info.value)
     assert payload["code"] == "not_found"

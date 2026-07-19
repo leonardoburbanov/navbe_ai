@@ -102,8 +102,13 @@ though it is not registered in `StepRegistry`.
 
 `create_mcp_server(flow_service, run_service, catalog_service)` registers tools
 and resources. Domain errors become FastMCP `ToolError` with a JSON payload
-(`error` / `code` / `message` / `details`). `flow.run` returns immediately;
+(`error` / `code` / `message` / `details`). `flow_run` returns immediately;
 `RunService.start` schedules execution with `asyncio.create_task`.
+
+Discovery (EPIC 10): tools `catalog_*`, `flow_list`, `flow_get`, `flow_update`
+plus resources `navbe://catalog/*`, `navbe://flows`, `navbe://flows/{flow_id}`.
+Tool names are underscored (`flow_create`, not `flow.create`) for Claude-safe
+`^[a-zA-Z0-9_-]{1,64}$` names.
 
 ## Wiring
 

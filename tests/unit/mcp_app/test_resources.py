@@ -1,10 +1,12 @@
-"""Tests for catalog MCP resources."""
+"""Tests for catalog and flows MCP resources."""
 
 import json
 
+import pytest
 from fastmcp import Client
 
-from tests.unit.mcp_app.conftest import FakeCatalogService, make_server
+from navbe.core.exceptions import NotFoundError
+from tests.unit.mcp_app.conftest import FakeCatalogService, FakeFlowService, make_server
 
 
 async def _read_json(client: Client, uri: str) -> dict:
@@ -38,3 +40,34 @@ async def test_full_resource_combines_both() -> None:
             "steps": catalog.steps,
             "connectors": catalog.connectors,
         }
+
+
+async def test_flows_index_resource_lists_metadata() -> None:
+    """navbe://flows returns saved flow metadata."""
+    flow_service = FakeFlowService()
+    await flow_service.create({"flow_id": "demo", "name": "Demo"})
+    server = make_server(flow_service=flow_service)
+    async with Client(server) as client:
+        body = await _read_json(client, "navbe://flows")
+    assert body["flows"][0]["flow_id"] == "demo"
+
+
+async def test_flow_by_id_resource_returns_spec() -> None:
+    """navbe://flows/{flow_id} returns the FlowSpec."""
+    flow_service = FakeFlowService()
+    await flow_service.create({"flow_id": "demo", "name": "Demo"})
+    server = make_server(flow_service=flow_service)
+    async with Client(server) as client:
+        body = await _read_json(client, "navbe://flows/demo")
+    assert body["flow_id"] == "demo"
+    assert body["entry_node"] == "n1"
+
+
+async def test_flow_by_id_missing_raises() -> None:
+    """Missing flow resource surfaces NotFoundError (not a silent empty body)."""
+    flow_service = FakeFlowService()
+    flow_service.get_error = NotFoundError("missing", details={"flow_id": "ghost"})
+    server = make_server(flow_service=flow_service)
+    async with Client(server) as client:
+        with pytest.raises(Exception):
+            await client.read_resource("navbe://flows/ghost")

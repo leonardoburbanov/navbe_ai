@@ -1,4 +1,4 @@
-"""Tests for flow.list_runs tool."""
+"""Tests for flow_list_runs tool."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -29,6 +29,6 @@ async def test_flow_list_runs_returns_runs_sorted() -> None:
     run_service.runs_by_flow["f1"] = [older, newer]
     server = make_server(run_service=run_service)
     async with Client(server) as client:
-        result = await client.call_tool("flow.list_runs", {"flow_id": "f1"})
+        result = await client.call_tool("flow_list_runs", {"flow_id": "f1"})
     ids = [run["run_id"] for run in result.data["runs"]]
     assert ids == ["new", "old"]

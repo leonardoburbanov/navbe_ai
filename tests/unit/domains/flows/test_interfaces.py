@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 
+from navbe.core.exceptions import NotFoundError
 from navbe.domains.flows.interfaces import FlowRepository
 from navbe.domains.flows.models import FlowMetadata, FlowSpec
 
@@ -12,12 +13,15 @@ class FakeFlowRepository:
     def __init__(self) -> None:
         """Create empty store."""
         self.saved: list[FlowSpec] = []
+        self.updated: list[FlowSpec] = []
         self.flows: dict[str, FlowSpec] = {}
+        self.versions: dict[str, int] = {}
 
     async def save(self, flow_spec: FlowSpec) -> FlowMetadata:
         """Record and store a flow."""
         self.saved.append(flow_spec)
         self.flows[flow_spec.flow_id] = flow_spec
+        self.versions[flow_spec.flow_id] = 1
         now = datetime.now(UTC)
         return FlowMetadata(
             flow_id=flow_spec.flow_id,
@@ -30,6 +34,11 @@ class FakeFlowRepository:
 
     async def get(self, flow_id: str) -> FlowSpec:
         """Return a stored flow."""
+        if flow_id not in self.flows:
+            raise NotFoundError(
+                f"Flow '{flow_id}' not found",
+                details={"flow_id": flow_id},
+            )
         return self.flows[flow_id]
 
     async def list(self) -> list[FlowMetadata]:
@@ -41,7 +50,7 @@ class FakeFlowRepository:
                 name=flow.name,
                 created_at=now,
                 updated_at=now,
-                version=1,
+                version=self.versions.get(flow.flow_id, 1),
                 path=f"/fake/{flow.flow_id}/flow.json",
             )
             for flow in self.flows.values()
@@ -49,14 +58,21 @@ class FakeFlowRepository:
 
     async def update(self, flow_spec: FlowSpec) -> FlowMetadata:
         """Replace a stored flow."""
+        if flow_spec.flow_id not in self.flows:
+            raise NotFoundError(
+                f"Flow '{flow_spec.flow_id}' not found",
+                details={"flow_id": flow_spec.flow_id},
+            )
+        self.updated.append(flow_spec)
         self.flows[flow_spec.flow_id] = flow_spec
+        self.versions[flow_spec.flow_id] = self.versions.get(flow_spec.flow_id, 1) + 1
         now = datetime.now(UTC)
         return FlowMetadata(
             flow_id=flow_spec.flow_id,
             name=flow_spec.name,
             created_at=now,
             updated_at=now,
-            version=2,
+            version=self.versions[flow_spec.flow_id],
             path=f"/fake/{flow_spec.flow_id}/flow.json",
         )
 

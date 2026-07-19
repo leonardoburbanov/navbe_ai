@@ -114,14 +114,21 @@ async def test_full_demo_cycle_via_mcp_client(
         steps_catalog = json.loads(steps_contents[0].text)
         assert "http_request" in steps_catalog
 
-        validation = await client.call_tool("flow.validate", {"spec": demo})
+        validation = await client.call_tool("flow_validate", {"spec": demo})
         assert validation.data["valid"] is True
 
-        created = await client.call_tool("flow.create", {"spec": demo})
+        created = await client.call_tool("flow_create", {"spec": demo})
         flow_id = created.data["flow_id"]
 
+        listed = await client.call_tool("flow_list", {})
+        assert any(flow["flow_id"] == flow_id for flow in listed.data["flows"])
+
+        flows_contents = await client.read_resource("navbe://flows")
+        flows_body = json.loads(flows_contents[0].text)
+        assert any(flow["flow_id"] == flow_id for flow in flows_body["flows"])
+
         run = await client.call_tool(
-            "flow.run",
+            "flow_run",
             {
                 "flow_id": flow_id,
                 "initial_input": {"text": "Your price is too high", "amount": 1},
@@ -136,7 +143,7 @@ async def test_full_demo_cycle_via_mcp_client(
                     *list(run_service._background_tasks),
                     return_exceptions=True,
                 )
-            status = await client.call_tool("flow.status", {"run_id": run_id})
+            status = await client.call_tool("flow_status", {"run_id": run_id})
             if status.data["status"] in ("completed", "failed"):
                 break
             await asyncio.sleep(0.1)

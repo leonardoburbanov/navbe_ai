@@ -5,7 +5,7 @@ from typing import Any
 
 from navbe.core.exceptions import NotFoundError
 from navbe.domains.execution.models import RunState, RunStatus
-from navbe.domains.flows.models import FlowMetadata
+from navbe.domains.flows.models import FlowMetadata, FlowSpec
 from navbe.domains.flows.validator import ValidationResult
 
 
@@ -33,15 +33,20 @@ class FakeFlowService:
 
     def __init__(self) -> None:
         self.created: list[dict] = []
+        self.updated: list[dict] = []
         self.create_error: Exception | None = None
+        self.update_error: Exception | None = None
+        self.get_error: Exception | None = None
         self.validate_result = ValidationResult(valid=True, issues=[])
+        self.flows: dict[str, FlowSpec] = {}
+        self.meta: dict[str, FlowMetadata] = {}
 
     async def create(self, spec: dict[str, Any]) -> FlowMetadata:
         if self.create_error is not None:
             raise self.create_error
         self.created.append(spec)
         now = datetime.now(UTC)
-        return FlowMetadata(
+        meta = FlowMetadata(
             flow_id=spec.get("flow_id", "f1"),
             name=spec.get("name", ""),
             created_at=now,
@@ -49,6 +54,59 @@ class FakeFlowService:
             version=1,
             path="/tmp/f1/flow.json",
         )
+        self.meta[meta.flow_id] = meta
+        self.flows[meta.flow_id] = FlowSpec.model_validate(
+            {
+                "flow_id": meta.flow_id,
+                "name": meta.name,
+                "entry_node": "n1",
+                "nodes": [
+                    {
+                        "id": "n1",
+                        "step_type": "set_var",
+                        "config": {"var_name": "x", "value_from": "x"},
+                    }
+                ],
+                "edges": [],
+            }
+        )
+        return meta
+
+    async def update(self, spec: dict[str, Any]) -> FlowMetadata:
+        if self.update_error is not None:
+            raise self.update_error
+        flow_id = spec.get("flow_id", "")
+        if flow_id not in self.meta:
+            raise NotFoundError(
+                f"Flow '{flow_id}' not found",
+                details={"flow_id": flow_id},
+            )
+        self.updated.append(spec)
+        now = datetime.now(UTC)
+        prev = self.meta[flow_id]
+        meta = FlowMetadata(
+            flow_id=flow_id,
+            name=spec.get("name", prev.name),
+            created_at=prev.created_at,
+            updated_at=now,
+            version=prev.version + 1,
+            path=prev.path,
+        )
+        self.meta[flow_id] = meta
+        return meta
+
+    async def get(self, flow_id: str) -> FlowSpec:
+        if self.get_error is not None:
+            raise self.get_error
+        if flow_id not in self.flows:
+            raise NotFoundError(
+                f"Flow '{flow_id}' not found",
+                details={"flow_id": flow_id},
+            )
+        return self.flows[flow_id]
+
+    async def list(self) -> list[FlowMetadata]:
+        return list(self.meta.values())
 
     def validate(self, flow_spec: Any) -> ValidationResult:
         return self.validate_result

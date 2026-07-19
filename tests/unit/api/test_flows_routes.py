@@ -32,7 +32,9 @@ class FakeFlowService:
             }
         )
         self.create_error: Exception | None = None
+        self.update_error: Exception | None = None
         self.get_error: Exception | None = None
+        self.last_update: dict[str, Any] | None = None
 
     async def create(self, spec: dict[str, Any]) -> FlowMetadata:
         if self.create_error is not None:
@@ -44,6 +46,20 @@ class FakeFlowService:
             created_at=now,
             updated_at=now,
             version=1,
+            path="/tmp/demo/flow.json",
+        )
+
+    async def update(self, spec: dict[str, Any]) -> FlowMetadata:
+        if self.update_error is not None:
+            raise self.update_error
+        self.last_update = spec
+        now = datetime.now(UTC)
+        return FlowMetadata(
+            flow_id=spec.get("flow_id", "demo"),
+            name=spec.get("name", ""),
+            created_at=now,
+            updated_at=now,
+            version=2,
             path="/tmp/demo/flow.json",
         )
 
@@ -148,3 +164,57 @@ async def test_list_flows_returns_array(client: AsyncClient) -> None:
     body = response.json()
     assert isinstance(body, list)
     assert body[0]["flow_id"] == "demo"
+
+
+async def test_put_updates_flow_returns_metadata(
+    client: AsyncClient,
+    fake_flow_service: FakeFlowService,
+) -> None:
+    """PUT /flows/{id} returns bumped metadata and forces path flow_id."""
+    response = await client.put(
+        "/api/v1/flows/demo",
+        json={
+            "entry_node": "n1",
+            "nodes": [
+                {
+                    "id": "n1",
+                    "step_type": "set_var",
+                    "config": {"var_name": "x", "value_from": "x"},
+                }
+            ],
+            "edges": [],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["flow_id"] == "demo"
+    assert body["version"] == 2
+    assert fake_flow_service.last_update is not None
+    assert fake_flow_service.last_update["flow_id"] == "demo"
+
+
+async def test_put_mismatched_flow_id_returns_422(client: AsyncClient) -> None:
+    """Body flow_id that disagrees with the path is rejected."""
+    response = await client.put(
+        "/api/v1/flows/demo",
+        json={"flow_id": "other", "entry_node": "n1", "nodes": [], "edges": []},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "validation_error"
+
+
+async def test_put_missing_flow_returns_404(
+    client: AsyncClient,
+    fake_flow_service: FakeFlowService,
+) -> None:
+    """NotFoundError from update maps to HTTP 404."""
+    fake_flow_service.update_error = NotFoundError(
+        "missing",
+        details={"flow_id": "ghost"},
+    )
+    response = await client.put(
+        "/api/v1/flows/ghost",
+        json={"entry_node": "n1", "nodes": [], "edges": []},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "not_found"

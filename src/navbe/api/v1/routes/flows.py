@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 
 from navbe.api.errors import to_http_exception
-from navbe.core.exceptions import NavbeError
+from navbe.core.exceptions import NavbeError, ValidationError
 from navbe.dependencies import get_flow_service
 from navbe.domains.flows.service import FlowService
 
@@ -36,6 +36,31 @@ async def get_flow(
     except NavbeError as exc:
         raise to_http_exception(exc) from exc
     return flow_spec.model_dump(by_alias=True)
+
+
+@router.put("/{flow_id}")
+async def update_flow(
+    flow_id: str,
+    spec: dict[str, Any],
+    service: Annotated[FlowService, Depends(get_flow_service)],
+) -> dict[str, Any]:
+    """Validate and overwrite an existing flow.
+
+    Path ``flow_id`` wins. If the body includes a different ``flow_id``, 422.
+    """
+    if "flow_id" in spec and spec["flow_id"] != flow_id:
+        raise to_http_exception(
+            ValidationError(
+                "Body flow_id does not match path",
+                details={"path_flow_id": flow_id, "body_flow_id": spec["flow_id"]},
+            )
+        )
+    payload = {**spec, "flow_id": flow_id}
+    try:
+        metadata = await service.update(payload)
+    except NavbeError as exc:
+        raise to_http_exception(exc) from exc
+    return metadata.model_dump(mode="json")
 
 
 @router.get("")
