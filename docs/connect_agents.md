@@ -82,7 +82,19 @@ On macOS/Linux, replace the directory with something like
 **Restart Claude Desktop completely** (quit the app, not only close the window)
 so it re-spawns the subprocess.
 
-**Verify:** Claude’s MCP / connector UI shows **navbe** as connected.
+**Verify:** Claude’s MCP / connector UI shows **navbe** as connected, with tools
+including `navbe_howto`, `catalog_steps`, `flow_list`, `flow_create`, `flow_run`.
+
+### Claude Desktop tip (important)
+
+Claude Desktop often exposes **tools** but not `navbe://` resources. Tell Claude:
+
+```
+Call navbe_howto first, then catalog_steps and flow_list. Prefer tools over
+navbe:// resources. Ask me before flow_run.
+```
+
+Or open the MCP prompt named `navbe_howto` if your Claude build lists prompts.
 
 ---
 
@@ -141,8 +153,8 @@ price objection, and ask me before running it.
 
 ## 6. Expected agent behavior
 
-1. Discovers types via `catalog_steps` / `catalog_connectors` (or
-   `navbe://catalog/*`) and existing flows via `flow_list`
+1. Calls `navbe_howto`, then `catalog_steps` / `catalog_connectors` and
+   `flow_list` (prefer tools over `navbe://` resources on Claude Desktop)
 2. Builds a FlowSpec using registered types (`http_request`, `set_var`,
    `llm_call`, `router`, optionally `approval`)
 3. Calls `flow_validate`, then `flow_create` (or `flow_update` if editing)

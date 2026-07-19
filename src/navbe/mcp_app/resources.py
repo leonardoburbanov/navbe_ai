@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 
 from navbe.domains.catalog.service import CatalogService
 from navbe.domains.flows.service import FlowService
+from navbe.mcp_app.guide import NAVBE_HOWTO
 
 
 def register_resources(
@@ -13,7 +14,12 @@ def register_resources(
     catalog_service: CatalogService,
     flow_service: FlowService,
 ) -> None:
-    """Register navbe://catalog/* and navbe://flows resources on ``mcp``."""
+    """Register navbe://guide, catalog/*, and flows resources on ``mcp``."""
+
+    @mcp.resource("navbe://guide")
+    async def howto_guide() -> str:
+        """Claude/Cursor playbook: discover → validate → create → ask → run."""
+        return NAVBE_HOWTO
 
     @mcp.resource("navbe://catalog/steps")
     async def steps_catalog() -> dict[str, Any]:

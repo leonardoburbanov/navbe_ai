@@ -12,6 +12,7 @@ async def test_server_registers_expected_tools() -> None:
         tools = await client.list_tools()
         names = {tool.name for tool in tools}
     assert {
+        "navbe_howto",
         "catalog_steps",
         "catalog_connectors",
         "catalog_full",
@@ -28,14 +29,16 @@ async def test_server_registers_expected_tools() -> None:
 
 
 async def test_server_registers_expected_resources() -> None:
-    """Server exposes catalog and flows resources."""
+    """Server exposes guide, catalog, and flows resources."""
     server = make_server()
     async with Client(server) as client:
         resources = await client.list_resources()
         uris = {str(resource.uri) for resource in resources}
         templates = await client.list_resource_templates()
         template_uris = {str(template.uriTemplate) for template in templates}
+    assert "navbe://guide" in uris
     assert "navbe://catalog/steps" in uris
     assert "navbe://catalog/connectors" in uris
     assert "navbe://flows" in uris
     assert "navbe://flows/{flow_id}" in template_uris
+

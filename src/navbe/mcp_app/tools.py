@@ -10,6 +10,7 @@ from navbe.domains.execution.service import RunService
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 from navbe.mcp_app.errors import mcp_tool_error_handler
+from navbe.mcp_app.guide import NAVBE_HOWTO
 
 
 def register_tools(
@@ -25,45 +26,60 @@ def register_tools(
     ``^[a-zA-Z0-9_-]{1,64}$``.
     """
 
+    @mcp.tool(name="navbe_howto")
+    @mcp_tool_error_handler
+    async def navbe_howto() -> dict:
+        """Read this first on Claude Desktop: Navbe tool playbook.
+
+        Returns the discover → validate → create → ask → run loop, FlowSpec
+        shape, and tool map. Prefer this over ``navbe://`` resources.
+        """
+        return {"guide": NAVBE_HOWTO}
+
     @mcp.tool(name="catalog_steps")
     @mcp_tool_error_handler
     async def catalog_steps() -> dict:
-        """JSON Schema catalog of available step types (mirrors navbe://catalog/steps)."""
+        """List valid step_type values and config schemas. Call before authoring.
+
+        Prefer this tool over ``navbe://catalog/steps`` on Claude Desktop.
+        """
         return await catalog_service.get_steps_catalog()
 
     @mcp.tool(name="catalog_connectors")
     @mcp_tool_error_handler
     async def catalog_connectors() -> dict:
-        """JSON Schema catalog of connector types (mirrors navbe://catalog/connectors)."""
+        """List valid connector types and config schemas. Call before authoring.
+
+        Prefer this tool over ``navbe://catalog/connectors`` on Claude Desktop.
+        """
         return await catalog_service.get_connectors_catalog()
 
     @mcp.tool(name="catalog_full")
     @mcp_tool_error_handler
     async def catalog_full() -> dict:
-        """Combined steps + connectors catalog (mirrors navbe://catalog/full)."""
+        """Combined steps + connectors catalogs. Call before authoring a FlowSpec."""
         return await catalog_service.get_full_catalog()
 
     @mcp.tool(name="flow_list")
     @mcp_tool_error_handler
     async def flow_list() -> dict:
-        """List saved flow metadata (flow_id, name, version, path, timestamps)."""
+        """List saved flows. Call before create to avoid duplicates."""
         flows = await flow_service.list()
         return {"flows": [flow.model_dump(mode="json") for flow in flows]}
 
     @mcp.tool(name="flow_get")
     @mcp_tool_error_handler
     async def flow_get(flow_id: str) -> dict:
-        """Return a persisted FlowSpec by id."""
+        """Return a persisted FlowSpec by id. Call before flow_update."""
         flow_spec = await flow_service.get(flow_id)
         return flow_spec.model_dump(by_alias=True)
 
     @mcp.tool(name="flow_create")
     @mcp_tool_error_handler
     async def flow_create(spec: dict) -> dict:
-        """Create and persist a Flow from a FlowSpec dict.
+        """Create and persist a FlowSpec. Call catalog_steps + flow_validate first.
 
-        Validates structure and graph before saving. Consult
-        ``catalog_steps`` / ``navbe://catalog/steps`` first for valid types.
+        Do not run the flow here — use flow_run only after user confirmation.
         """
         metadata = await flow_service.create(spec)
         return {
@@ -75,10 +91,7 @@ def register_tools(
     @mcp.tool(name="flow_validate")
     @mcp_tool_error_handler
     async def flow_validate(spec: dict) -> dict:
-        """Validate a FlowSpec without persisting it.
-
-        Use before ``flow_create`` / ``flow_update`` to catch issues cheaply.
-        """
+        """Validate a FlowSpec without saving. Use before flow_create / flow_update."""
         try:
             flow_spec = FlowSpec.model_validate(spec)
         except pydantic.ValidationError as exc:
@@ -92,7 +105,7 @@ def register_tools(
     @mcp.tool(name="flow_update")
     @mcp_tool_error_handler
     async def flow_update(spec: dict) -> dict:
-        """Validate and overwrite an existing flow (archives the prior version)."""
+        """Overwrite an existing flow (archives prior version). Call flow_get first."""
         metadata = await flow_service.update(spec)
         return {
             "flow_id": metadata.flow_id,
@@ -103,10 +116,9 @@ def register_tools(
     @mcp.tool(name="flow_run")
     @mcp_tool_error_handler
     async def flow_run(flow_id: str, initial_input: dict | None = None) -> dict:
-        """Start execution of an existing flow.
+        """Start a flow run. Ask the user before calling. Returns run_id immediately.
 
-        Returns immediately with a ``run_id``; poll ``flow_status`` for
-        progress. Does not wait for the run to finish.
+        Then poll flow_status until completed / failed / paused.
         """
         run_id = await run_service.start(flow_id, initial_input)
         return {"run_id": run_id, "status": "started"}
@@ -114,23 +126,20 @@ def register_tools(
     @mcp.tool(name="flow_status")
     @mcp_tool_error_handler
     async def flow_status(run_id: str) -> dict:
-        """Return current run state: status, current_node, outputs, error."""
+        """Poll run state: status, current_node, outputs, error."""
         state = await run_service.status(run_id)
         return state.model_dump(mode="json")
 
     @mcp.tool(name="flow_resume")
     @mcp_tool_error_handler
     async def flow_resume(run_id: str, decision: dict) -> dict:
-        """Resume a PAUSED run (typically after an approval node).
-
-        ``decision`` shape: ``{"approved": bool, ...}``.
-        """
+        """Resume a paused approval node. decision: {\"approved\": bool, ...}."""
         state = await run_service.resume(run_id, decision)
         return state.model_dump(mode="json")
 
     @mcp.tool(name="flow_list_runs")
     @mcp_tool_error_handler
     async def flow_list_runs(flow_id: str) -> dict:
-        """List all runs for a flow, most recent first (by updated_at)."""
+        """List runs for one flow, most recent first."""
         runs = await run_service.list_runs(flow_id)
         return {"runs": [run.model_dump(mode="json") for run in runs]}

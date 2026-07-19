@@ -110,6 +110,10 @@ plus resources `navbe://catalog/*`, `navbe://flows`, `navbe://flows/{flow_id}`.
 Tool names are underscored (`flow_create`, not `flow.create`) for Claude-safe
 `^[a-zA-Z0-9_-]{1,64}$` names.
 
+Claude Desktop playbook: tool `navbe_howto`, resource `navbe://guide`, and
+prompt `navbe_howto` share one text (`mcp_app/guide.py`). Prefer the **tool**
+on Claude Desktop (resources/prompts are often not surfaced to the model).
+
 ## Wiring
 
 `dependencies.py` is the only production constructor for concrete services

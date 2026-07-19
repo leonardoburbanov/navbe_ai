@@ -50,6 +50,7 @@ async def test_stdio_entrypoint_starts_and_responds_to_initialize(
         assert "flow_run" in names
         assert "flow_list" in names
         assert "catalog_steps" in names
+        assert "navbe_howto" in names
 
 
 async def test_stdio_validate_and_create_minimal_flow(

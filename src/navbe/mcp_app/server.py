@@ -6,6 +6,7 @@ from navbe.core.config import get_settings
 from navbe.domains.catalog.service import CatalogService
 from navbe.domains.execution.service import RunService
 from navbe.domains.flows.service import FlowService
+from navbe.mcp_app.guide import register_prompts
 from navbe.mcp_app.resources import register_resources
 from navbe.mcp_app.tools import register_tools
 
@@ -15,7 +16,7 @@ def create_mcp_server(
     run_service: RunService,
     catalog_service: CatalogService,
 ) -> FastMCP:
-    """Build a FastMCP server with flow/catalog tools and resources."""
+    """Build a FastMCP server with flow/catalog tools, resources, and prompts."""
     settings = get_settings()
     mcp = FastMCP(settings.mcp_server_name)
     register_tools(
@@ -29,4 +30,5 @@ def create_mcp_server(
         catalog_service=catalog_service,
         flow_service=flow_service,
     )
+    register_prompts(mcp)
     return mcp
