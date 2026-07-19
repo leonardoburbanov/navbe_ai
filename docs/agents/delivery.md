@@ -58,4 +58,5 @@ Prefer code as source of truth. No speculative docs for packages that do not exi
 - [EPIC 2 — Connectors Domain](epics/epic-2.md) — done (standalone HTTP connector)
 - [EPIC 3 — Secrets Domain](epics/epic-3.md) — done (env-backed secret refs)
 - [EPIC 4 — Flows Domain](epics/epic-4.md) — done (FlowSpec validate + persist)
-- EPIC 5+ — not drafted here yet; wait for an explicit brief
+- [EPIC 5 — Execution Domain](epics/epic-5.md) — done (LangGraph run + HITL)
+- EPIC 6+ — not drafted here yet; wait for an explicit brief

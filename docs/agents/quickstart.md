@@ -41,5 +41,6 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 2](epics/epic-2.md) — connectors domain status
 - [EPIC 3](epics/epic-3.md) — secrets domain status
 - [EPIC 4](epics/epic-4.md) — flows domain status
+- [EPIC 5](epics/epic-5.md) — execution domain status
 - [Architecture](architecture.md) — layers and domain pattern
 - [Operations](operations.md) — commands and CI

@@ -38,8 +38,9 @@ Implemented domain:
 - `connectors` — standalone connector contracts, registry, service, and HTTP implementation.
 - `secrets` — env-backed secret refs consumed by connector resolution.
 - `flows` — FlowSpec models, graph validation, filesystem + SQLite index.
+- `execution` — FlowSpec → LangGraph compile/run, checkpoints, HITL, run transcripts.
 
-Planned domain names: `execution`, `catalog`. Do not document their APIs until implemented.
+Planned domain names: `catalog`. Do not document their APIs until implemented.
 
 ## Steps domain
 
@@ -74,6 +75,17 @@ Missing keys raise `NotFoundError` with the key name and a hint — never a secr
 `FlowService.create` validates structure + graph, then persists via
 `FileSystemFlowRepository` (`flow.json` + SQLite `flows_index`).
 `update()` archives prior content as `flow.v{n}.json`. Cycles are allowed.
+
+## Execution domain
+
+`RunService` loads a `FlowSpec`, compiles it via `compile_flow`, and runs it
+through `LangGraphEngine` (`AsyncSqliteSaver` checkpoints). Per-run artifacts
+live under `{runs_dir}/{flow_id}/{run_id}/` (`state.json`, `trace.jsonl`,
+`transcript.md`). Reserved step type `approval` pauses via LangGraph
+`interrupt`; `resume` continues with `Command(resume=decision)`.
+
+Conditional edges match `node_outputs[source]["route"]` to `edge.condition`
+(same convention as `RouterStep`).
 
 ## Persistence split (target)
 
