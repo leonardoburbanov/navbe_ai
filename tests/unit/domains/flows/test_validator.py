@@ -106,3 +106,22 @@ def test_cyclic_flow_is_not_flagged_as_invalid() -> None:
         edge.from_ == "router" and edge.to == "capture_objection"
         for edge in FlowSpec.model_validate(_demo()).edges
     )
+
+
+def test_approval_step_type_passes_validation() -> None:
+    """Reserved approval step_type is accepted without unknown_step_type."""
+    payload = {
+        "flow_id": "hitl",
+        "entry_node": "gate",
+        "nodes": [
+            {
+                "id": "gate",
+                "step_type": "approval",
+                "config": {"message": "Approve?"},
+            }
+        ],
+        "edges": [],
+    }
+    result = validate_graph(FlowSpec.model_validate(payload))
+    assert result.valid is True
+    assert not any(issue.code == "unknown_step_type" for issue in result.issues)

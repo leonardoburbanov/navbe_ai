@@ -1,5 +1,6 @@
 """Standalone end-to-end execution of the sales-bot demo flow."""
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -124,8 +125,15 @@ async def test_full_demo_flow_executes_end_to_end(
         "sales_bot_objection_test",
         {"text": "Your price is too high", "amount": 1},
     )
-    final = await run_service.status(run_id)
-
+    final = None
+    for _ in range(50):
+        if run_service._background_tasks:
+            await asyncio.gather(*list(run_service._background_tasks), return_exceptions=True)
+        final = await run_service.status(run_id)
+        if final.status in (RunStatus.COMPLETED, RunStatus.FAILED):
+            break
+        await asyncio.sleep(0.05)
+    assert final is not None
     assert final.status == RunStatus.COMPLETED
     assert "persist_outcome" in final.node_outputs
     assert "router" in final.node_outputs

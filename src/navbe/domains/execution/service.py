@@ -1,11 +1,13 @@
 """Orchestration use-cases for starting and inspecting runs."""
 
+import asyncio
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 from navbe.domains.connectors.service import ConnectorService
 from navbe.domains.execution.interfaces import ExecutionEngine
-from navbe.domains.execution.models import RunState
+from navbe.domains.execution.models import RunState, RunStatus
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 
@@ -37,12 +39,33 @@ class RunService:
         self._engine = engine
         self._flow_service = flow_service
         self._connector_service = connector_service
+        # Keep strong refs so create_task work is not GC'd mid-run.
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
     async def start(self, flow_id: str, initial_input: Any = None) -> str:
-        """Fetch a flow and execute it; return the new run_id."""
+        """Fetch a flow, schedule execution in the background, return run_id.
+
+        Returns as soon as the run is scheduled (does not wait for completion).
+        """
         flow_spec = await self._flow_service.get(flow_id)
         run_id = str(uuid4())
-        await self._engine.run(flow_spec, run_id, initial_input)
+        now = datetime.now(UTC)
+        repo = getattr(self._engine, "repository", None)
+        if repo is not None:
+            await repo.save_state(
+                run_id,
+                RunState(
+                    run_id=run_id,
+                    flow_id=flow_spec.flow_id,
+                    status=RunStatus.PENDING,
+                    created_at=now,
+                    updated_at=now,
+                ),
+            )
+
+        task = asyncio.create_task(self._engine.run(flow_spec, run_id, initial_input))
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
         return run_id
 
     async def status(self, run_id: str) -> RunState:
@@ -54,5 +77,5 @@ class RunService:
         return await self._engine.resume(run_id, decision)
 
     async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List runs for a flow via the engine Protocol."""
+        """List runs for a flow, most recent first (by updated_at)."""
         return await self._engine.list_runs(flow_id)

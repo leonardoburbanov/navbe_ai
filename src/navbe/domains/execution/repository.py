@@ -129,7 +129,7 @@ class FileSystemRunRepository:
             return RunState.model_validate_json(await handle.read())
 
     async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List all runs under a flow's runs directory."""
+        """List all runs under a flow's runs directory, most recent first."""
         root = self._runs_dir_for(flow_id)
         if not root.exists():
             return []
@@ -139,4 +139,5 @@ class FileSystemRunRepository:
             if child.is_dir() and state_path.exists():
                 async with aiofiles.open(state_path, encoding="utf-8") as handle:
                     states.append(RunState.model_validate_json(await handle.read()))
+        states.sort(key=lambda state: state.updated_at, reverse=True)
         return states

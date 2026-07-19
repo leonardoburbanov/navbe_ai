@@ -7,7 +7,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.types import Command
 
-from navbe.core.exceptions import NavbeError, NotFoundError
+from navbe.core.exceptions import ExecutionError, NavbeError, NotFoundError
 from navbe.domains.execution.graph_compiler import compile_flow
 from navbe.domains.execution.interfaces import RunRepository
 from navbe.domains.execution.models import RunState, RunStatus
@@ -40,7 +40,7 @@ class LangGraphEngine:
         return self._repository
 
     async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List runs for a flow via the repository."""
+        """List runs for a flow, most recent first."""
         return await self._repository.list_runs(flow_id)
 
     async def _resolve_connectors_map(self, flow_spec: FlowSpec) -> dict[str, Any]:
@@ -138,8 +138,13 @@ class LangGraphEngine:
 
     async def resume(self, run_id: str, decision: dict) -> RunState:
         """Resume a paused HITL run with ``Command(resume=decision)``."""
-        flow_spec = await self._get_flow_spec_for_run(run_id)
         prior = await self._repository.get_state(run_id)
+        if prior.status != RunStatus.PAUSED:
+            raise ExecutionError(
+                f"Run '{run_id}' is not paused (status={prior.status})",
+                details={"run_id": run_id, "status": str(prior.status)},
+            )
+        flow_spec = await self._get_flow_spec_for_run(run_id)
         connectors = await self._resolve_connectors_map(flow_spec)
         graph = compile_flow(
             flow_spec,

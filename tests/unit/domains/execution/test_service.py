@@ -1,5 +1,6 @@
 """Tests for RunService."""
 
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock
@@ -51,25 +52,33 @@ def _flow() -> FlowSpec:
     )
 
 
+async def _await_background(service: RunService) -> None:
+    """Wait for any background run tasks scheduled by start()."""
+    if service._background_tasks:
+        await asyncio.gather(*list(service._background_tasks))
+
+
 async def test_start_fetches_flow_and_triggers_engine_run() -> None:
-    """start() loads the flow and calls engine.run."""
+    """start() loads the flow and schedules engine.run."""
     engine = FakeExecutionEngine()
     engine.run = AsyncMock(wraps=engine.run)
     flow = _flow()
     service = RunService(engine, FakeFlowService(flow), FakeConnectorService())
     run_id = await service.start("svc_flow", {"x": 1})
+    await _await_background(service)
     engine.run.assert_awaited_once()
     assert engine.run.await_args.args[0].flow_id == "svc_flow"
     assert engine.run.await_args.args[1] == run_id
 
 
 async def test_start_returns_a_run_id() -> None:
-    """start() returns a non-empty UUID-shaped string."""
+    """start() returns a non-empty UUID-shaped string without waiting for run."""
     service = RunService(FakeExecutionEngine(), FakeFlowService(_flow()), FakeConnectorService())
     run_id = await service.start("svc_flow")
     assert isinstance(run_id, str)
     assert len(run_id) >= 8
     assert "-" in run_id
+    await _await_background(service)
 
 
 async def test_status_delegates_to_engine() -> None:

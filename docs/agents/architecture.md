@@ -9,7 +9,7 @@ Enforced by [`.importlinter`](../../.importlinter):
 ```
 navbe.mcp_app | navbe.api   # outer: thin handlers
         ↓
-navbe.domains               # use-cases (empty until later EPICs)
+navbe.domains               # use-cases (steps…catalog)
         ↓
 navbe.core                  # config, DB helpers, exceptions
 ```
@@ -39,8 +39,11 @@ Implemented domain:
 - `secrets` — env-backed secret refs consumed by connector resolution.
 - `flows` — FlowSpec models, graph validation, filesystem + SQLite index.
 - `execution` — FlowSpec → LangGraph compile/run, checkpoints, HITL, run transcripts.
+- `catalog` — read-only JSON Schema aggregation of steps + connectors for agents.
 
-Planned domain names: `catalog`. Do not document their APIs until implemented.
+Outer surface (not a domain):
+
+- `mcp_app` — FastMCP tools (`flow.*`) and catalog resources; thin adapters only.
 
 ## Steps domain
 
@@ -86,6 +89,21 @@ live under `{runs_dir}/{flow_id}/{run_id}/` (`state.json`, `trace.jsonl`,
 
 Conditional edges match `node_outputs[source]["route"]` to `edge.condition`
 (same convention as `RouterStep`).
+
+## Catalog domain
+
+`CatalogService` exposes `get_steps_catalog` / `get_connectors_catalog` /
+`get_full_catalog` for agents before they author a FlowSpec. Schemas come from
+registry `config_schema.model_json_schema()`. Reserved step type `approval`
+is synthesized into the steps catalog (and accepted by `validate_graph`) even
+though it is not registered in `StepRegistry`.
+
+## MCP app
+
+`create_mcp_server(flow_service, run_service, catalog_service)` registers tools
+and resources. Domain errors become FastMCP `ToolError` with a JSON payload
+(`error` / `code` / `message` / `details`). `flow.run` returns immediately;
+`RunService.start` schedules execution with `asyncio.create_task`.
 
 ## Persistence split (target)
 

@@ -6,6 +6,9 @@ from navbe.core.exceptions import NotFoundError
 from navbe.domains.flows.models import EdgeSpec, FlowSpec
 from navbe.domains.steps.registry import StepRegistry
 
+# Handled structurally by execution/graph_compiler — not via StepRegistry.
+RESERVED_STEP_TYPES = {"approval"}
+
 
 class ValidationIssue(BaseModel):
     """One graph-validation problem."""
@@ -55,6 +58,8 @@ def validate_graph(flow_spec: FlowSpec) -> ValidationResult:
         )
 
     for node in flow_spec.nodes:
+        if node.step_type in RESERVED_STEP_TYPES:
+            continue
         try:
             StepRegistry.get(node.step_type)
         except NotFoundError:
