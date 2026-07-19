@@ -37,8 +37,9 @@ Implemented domain:
 - `steps` — standalone step contracts, registry, service, and built-in implementations.
 - `connectors` — standalone connector contracts, registry, service, and HTTP implementation.
 - `secrets` — env-backed secret refs consumed by connector resolution.
+- `flows` — FlowSpec models, graph validation, filesystem + SQLite index.
 
-Planned domain names: `flows`, `execution`, `catalog`. Do not document their APIs until implemented.
+Planned domain names: `execution`, `catalog`. Do not document their APIs until implemented.
 
 ## Steps domain
 
@@ -66,6 +67,13 @@ Built-ins registered in `ConnectorRegistry`:
 v0.1 resolves `{"$secret": "KEY"}` leaves from process env / `.env`.
 `ConnectorService` injects `SecretsService(EnvSecretsProvider())` when wired.
 Missing keys raise `NotFoundError` with the key name and a hint — never a secret value.
+
+## Flows domain
+
+`FlowSpec` is the agent-authored JSON document (nodes, edges, connectors).
+`FlowService.create` validates structure + graph, then persists via
+`FileSystemFlowRepository` (`flow.json` + SQLite `flows_index`).
+`update()` archives prior content as `flow.v{n}.json`. Cycles are allowed.
 
 ## Persistence split (target)
 

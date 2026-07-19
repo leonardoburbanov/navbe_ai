@@ -15,6 +15,7 @@ Navbe is a local-first workflow orchestration engine operated by AI agents over 
 - `steps` domain — standalone Step contracts, registry, service, and built-in implementations
 - `connectors` domain — standalone Connector contracts, registry, service, HTTP implementation
 - `secrets` domain — env-backed `{"$secret": "KEY"}` resolution for connector configs
+- `flows` domain — FlowSpec definition, graph validation, filesystem + SQLite persistence
 - Domain package pattern — `models.py` / `interfaces.py` / `service.py` (even before domain folders exist)
 - Layering — `.importlinter` contract: `mcp_app` | `api` → `domains` → `core`
 - Tooling — `uv`, ruff, ty, pytest, lint-imports, CI workflow
@@ -22,7 +23,7 @@ Navbe is a local-first workflow orchestration engine operated by AI agents over 
 
 ## Defer until the matching EPIC lands
 
-- Per-domain pages (flows, execution, catalog)
+- Per-domain pages (execution, catalog)
 - MCP tool catalogs and HTTP route maps
 - Destination writers, LangGraph graphs, SQLite table schemas
 

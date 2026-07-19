@@ -1,0 +1,102 @@
+{
+  "flow_id": "sales_bot_objection_test",
+  "name": "Sales bot objection handling",
+  "entry_node": "turn_1",
+  "connectors": {
+    "crm": {
+      "type": "http",
+      "config": {
+        "base_url": "https://crm.example.com",
+        "headers": {
+          "Authorization": {"$secret": "CRM_API_KEY"}
+        },
+        "timeout": 30
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "turn_1",
+      "step_type": "llm_call",
+      "config": {
+        "prompt_template": "Open the sales conversation for lead {{flow_vars.lead_name}}.",
+        "model": "claude-sonnet-4-6"
+      }
+    },
+    {
+      "id": "capture_objection",
+      "step_type": "set_var",
+      "config": {
+        "var_name": "objection",
+        "value_from": "text"
+      }
+    },
+    {
+      "id": "eval_objection",
+      "step_type": "llm_call",
+      "config": {
+        "prompt_template": "Classify the objection '{{flow_vars.objection}}' as handleable or escalate.",
+        "output_schema": {
+          "type": "object",
+          "required": ["route"],
+          "properties": {
+            "route": {"type": "string"}
+          }
+        }
+      }
+    },
+    {
+      "id": "router",
+      "step_type": "router",
+      "config": {
+        "condition": "node_outputs['eval_objection']['route']",
+        "routes": {
+          "handle": "handle_objection",
+          "escalate": "escalate",
+          "retry": "capture_objection"
+        }
+      }
+    },
+    {
+      "id": "handle_objection",
+      "step_type": "llm_call",
+      "config": {
+        "prompt_template": "Respond to objection: {{flow_vars.objection}}"
+      }
+    },
+    {
+      "id": "persist_outcome",
+      "step_type": "http_request",
+      "config": {
+        "connector": "crm",
+        "method": "post",
+        "path": "/leads/{{flow_vars.lead_id}}/notes",
+        "body_template": {
+          "objection": "{{flow_vars.objection}}",
+          "outcome": "handled"
+        }
+      }
+    },
+    {
+      "id": "escalate",
+      "step_type": "http_request",
+      "config": {
+        "connector": "crm",
+        "method": "post",
+        "path": "/leads/{{flow_vars.lead_id}}/escalate",
+        "body_template": {
+          "reason": "{{flow_vars.objection}}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {"from": "turn_1", "to": "capture_objection"},
+    {"from": "capture_objection", "to": "eval_objection"},
+    {"from": "eval_objection", "to": "router"},
+    {"from": "router", "to": "handle_objection", "condition": "handle"},
+    {"from": "router", "to": "escalate", "condition": "escalate"},
+    {"from": "router", "to": "capture_objection", "condition": "retry"},
+    {"from": "handle_objection", "to": "persist_outcome"}
+  ]
+}

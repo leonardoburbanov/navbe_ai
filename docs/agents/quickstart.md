@@ -27,6 +27,7 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 | `src/navbe/domains/steps/` | Standalone step contracts, registry, service, implementations |
 | `src/navbe/domains/connectors/` | Standalone connector contracts, registry, service, HTTP implementation |
 | `src/navbe/domains/secrets/` | Env-backed secret refs for connector configs |
+| `src/navbe/domains/flows/` | FlowSpec models, graph validation, file/SQLite persistence |
 | `src/navbe/domains/` | Other domains arrive in later EPICs |
 | `src/navbe/api/` | FastAPI surface (stub) |
 | `src/navbe/mcp_app/` | FastMCP surface (stub) |
@@ -39,5 +40,6 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 1](epics/epic-1.md) — steps domain status
 - [EPIC 2](epics/epic-2.md) — connectors domain status
 - [EPIC 3](epics/epic-3.md) — secrets domain status
+- [EPIC 4](epics/epic-4.md) — flows domain status
 - [Architecture](architecture.md) — layers and domain pattern
 - [Operations](operations.md) — commands and CI
