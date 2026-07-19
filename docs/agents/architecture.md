@@ -112,6 +112,10 @@ and resources. Domain errors become FastMCP `ToolError` with a JSON payload
 mounts REST under `/api/v1/*` and FastMCP at `/mcp` via `http_app(path="/")`
 with the MCP lifespan (and SQLite `flows_index` create_all on startup).
 
+Stdio clients (Claude Desktop, Cursor) use `uv run navbe-mcp`
+(`navbe.mcp_stdio:main`) — same services, `transport="stdio"`. See
+[../connect_agents.md](../connect_agents.md).
+
 ## Persistence split (target)
 
 - **SQLite** (`aiosqlite` + SQLAlchemy async) — app/control-plane state

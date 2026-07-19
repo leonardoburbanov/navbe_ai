@@ -62,4 +62,5 @@ Prefer code as source of truth. No speculative docs for packages that do not exi
 - [EPIC 6 — Catalog Domain](epics/epic-6.md) — done (agent-facing step/connector schemas)
 - [EPIC 7 — MCP App](epics/epic-7.md) — done (FastMCP tools + catalog resources)
 - [EPIC 8 — FastAPI Wiring](epics/epic-8.md) — done (dependencies + REST + MCP mount)
-- EPIC 9+ — not drafted here yet; wait for an explicit brief
+- [EPIC 9 — E2E Demo + Clients](epics/epic-9.md) — done (stdio entrypoint + dual-client docs)
+- See also [../connect_agents.md](../connect_agents.md) for Claude Desktop / Cursor setup

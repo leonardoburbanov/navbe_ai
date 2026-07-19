@@ -45,5 +45,7 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 6](epics/epic-6.md) — catalog domain status
 - [EPIC 7](epics/epic-7.md) — MCP app status
 - [EPIC 8](epics/epic-8.md) — FastAPI wiring status
+- [EPIC 9](epics/epic-9.md) — e2e demo + client connection status
+- [Connect agents](../connect_agents.md) — Claude Desktop & Cursor MCP setup
 - [Architecture](architecture.md) — layers and domain pattern
 - [Operations](operations.md) — commands and CI

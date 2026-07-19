@@ -27,6 +27,7 @@ dependencies = [
 
 [project.scripts]
 navbe = "navbe.main:main"
+navbe-mcp = "navbe.mcp_stdio:main"
 
 [build-system]
 requires = ["uv_build>=0.11.19,<0.12.0"]
