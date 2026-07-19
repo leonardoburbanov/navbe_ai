@@ -62,15 +62,26 @@ claude-plugin/
 
 1. Edit `claude-plugin/.mcp.json` so `--directory` is your absolute Navbe checkout
    (default in-repo is `C:/NavbeAI/navbe_ai_v0.1`).
-2. In Claude Desktop: **Customize → Plugins → +** → upload
-   `claude-plugin/navbe-plugin.zip` (or the `claude-plugin/` folder if your build
-   accepts a directory).
-3. Enable the plugin. Confirm the **navbe** connector/tools appear
+2. Rebuild upload zips if needed (Unix paths required — do **not** use
+   PowerShell `Compress-Archive`):
+
+   ```bash
+   uv run python claude-plugin/build_zips.py
+   ```
+
+3. In Claude Desktop: **Customize → Plugins → +** → upload
+   `claude-plugin/navbe-plugin.zip`.
+4. Enable the plugin. Confirm the **navbe** connector/tools appear
    (`navbe_howto`, `catalog_steps`, `flow_list`, …).
-4. Confirm skill **navbe-flows** is listed under **Customize → Skills** (or via `/`).
+5. Confirm skill **navbe-flows** is listed under **Customize → Skills** (or via `/`).
 
 **Skill-only (if you already have MCP configured):** upload
 `claude-plugin/navbe-flows-skill.zip` under **Customize → Skills → +**.
+That zip must contain `navbe-flows/SKILL.md` (folder wrapper matching the
+skill name), with forward-slash paths only.
+
+If Claude says *Zip file contains path with invalid characters*, the archive
+was built with Windows backslashes — regenerate with `build_zips.py`.
 
 Fully quit and restart Claude Desktop after install so local MCP respawns.
 
