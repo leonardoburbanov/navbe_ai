@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "navbe": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${workspaceFolder}",
+        "navbe-mcp"
+      ]
+    }
+  }
+}

@@ -9,7 +9,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Navbe runtime settings (env prefix ``NAVBE_``)."""
 
-    model_config = SettingsConfigDict(env_prefix="NAVBE_", env_file=".env")
+    # extra=ignore: connector secrets (RESEND_API_KEY, etc.) live in the same .env
+    model_config = SettingsConfigDict(
+        env_prefix="NAVBE_",
+        env_file=".env",
+        extra="ignore",
+    )
 
     db_path: Path = Path("./navbe.db")
     flows_dir: Path = Path("./navbe_flows")

@@ -50,6 +50,36 @@ async def test_stdio_entrypoint_starts_and_responds_to_initialize(
         assert "flow.run" in names
 
 
+async def test_stdio_validate_and_create_minimal_flow(
+    stdio_env: dict[str, str],
+) -> None:
+    """Smoke: validate + create a one-node set_var flow over stdio MCP."""
+    spec = {
+        "flow_id": "smoke_set_var",
+        "entry_node": "n1",
+        "nodes": [
+            {
+                "id": "n1",
+                "step_type": "set_var",
+                "config": {"var_name": "amount", "value_from": "amount"},
+            }
+        ],
+        "edges": [],
+    }
+    transport = StdioTransport(
+        command="uv",
+        args=["run", "navbe-mcp"],
+        env=stdio_env,
+        cwd=str(ROOT),
+    )
+    async with Client(transport=transport) as client:
+        validation = await client.call_tool("flow.validate", {"spec": spec})
+        assert validation.data["valid"] is True
+
+        created = await client.call_tool("flow.create", {"spec": spec})
+        assert created.data["flow_id"] == "smoke_set_var"
+
+
 async def test_stdio_entrypoint_exits_cleanly_on_sigterm(
     stdio_env: dict[str, str],
 ) -> None:

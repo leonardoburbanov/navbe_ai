@@ -3,9 +3,14 @@
 import os
 from typing import Any
 
+from dotenv import load_dotenv
+
 from navbe.core.exceptions import NotFoundError
 from navbe.domains.secrets.interfaces import SecretsProvider
 from navbe.domains.secrets.models import is_secret_ref, parse_secret_ref
+
+# ponytail: load once at import — upgrade: injectable env source / secrets vault
+load_dotenv()
 
 
 class EnvSecretsProvider:
