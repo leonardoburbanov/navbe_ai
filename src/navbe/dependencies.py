@@ -23,6 +23,7 @@ from navbe.domains.flows.service import FlowService
 from navbe.domains.secrets.json_file import ChainedSecretsProvider, JsonFileSecretsProvider
 from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
 from navbe.domains.steps.registry import StepRegistry
+from navbe.domains.sync.service import SyncService
 
 
 @lru_cache
@@ -62,14 +63,31 @@ def get_connector_service() -> ConnectorService:
 
 
 @lru_cache
-def get_flow_service() -> FlowService:
-    """Return the flow service singleton."""
+def get_flow_repository() -> FileSystemFlowRepository:
+    """Return the shared filesystem flow repository."""
     settings = get_settings()
-    repo = FileSystemFlowRepository(
+    return FileSystemFlowRepository(
         flows_dir=settings.flows_dir,
         session_factory=get_session_factory(),
     )
-    return FlowService(repo)
+
+
+@lru_cache
+def get_flow_service() -> FlowService:
+    """Return the flow service singleton."""
+    return FlowService(get_flow_repository())
+
+
+@lru_cache
+def get_sync_service() -> SyncService:
+    """Return the flows-only GitHub sync service."""
+    settings = get_settings()
+    return SyncService(
+        config_path=settings.sync_config_path,
+        flows_dir=settings.flows_dir,
+        flow_repository=get_flow_repository(),
+        secrets_service=get_secrets_service(),
+    )
 
 
 @lru_cache
@@ -111,8 +129,10 @@ def get_catalog_service() -> CatalogService:
 def clear_dependency_caches() -> None:
     """Clear all provider caches (for test isolation)."""
     get_catalog_service.cache_clear()
+    get_sync_service.cache_clear()
     get_run_service.cache_clear()
     get_flow_service.cache_clear()
+    get_flow_repository.cache_clear()
     get_connector_service.cache_clear()
     get_secrets_service.cache_clear()
     get_session_factory.cache_clear()

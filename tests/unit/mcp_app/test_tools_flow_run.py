@@ -18,6 +18,7 @@ from tests.unit.mcp_app.conftest import (
     FakeCatalogService,
     FakeRunService,
     FakeSecretsService,
+    FakeSyncService,
     make_server,
 )
 
@@ -53,6 +54,7 @@ async def test_flow_run_returns_run_id_without_blocking() -> None:
         run_service,
         FakeCatalogService(),  # type: ignore[arg-type]
         FakeSecretsService(),  # type: ignore[arg-type]
+        FakeSyncService(),  # type: ignore[arg-type]
     )
     async with Client(server) as client:
         result = await client.call_tool("flow_run", {"flow_id": "slow", "initial_input": {}})

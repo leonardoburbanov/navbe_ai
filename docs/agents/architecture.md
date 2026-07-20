@@ -75,6 +75,16 @@ store via MCP `secret_set` / `secret_list` / `secret_delete` / `secret_has`
 (or REST `/api/v1/secrets`) — values are never returned.
 Missing keys raise `NotFoundError` with the key name and a hint — never a secret value.
 
+## Sync domain
+
+`SyncService` mirrors **only** flow organization to GitHub:
+`flows/<flow_id>/flow.json` under a working clone (`navbe_sync_repo/`).
+Never syncs runs, credentials, archives, or Python step/connector source.
+Auth: `GITHUB_TOKEN` / `GH_TOKEN` from the secrets store; token is injected
+in-process for `git` (`http.extraHeader`) and never written to disk config.
+MCP: `sync_configure` / `sync_init` / `sync_status` / `sync_branch_create` /
+`sync_checkout` / `sync_push` / `sync_pull`. REST: `/api/v1/sync/*`.
+
 ## Flows domain
 
 `FlowSpec` is the agent-authored JSON document (nodes, edges, connectors).
@@ -103,13 +113,14 @@ though it is not registered in `StepRegistry`.
 
 ## MCP app
 
-`create_mcp_server(flow_service, run_service, catalog_service)` registers tools
-and resources. Domain errors become FastMCP `ToolError` with a JSON payload
+`create_mcp_server(flow_service, run_service, catalog_service, secrets_service, sync_service)`
+registers tools and resources. Domain errors become FastMCP `ToolError` with a JSON payload
 (`error` / `code` / `message` / `details`). `flow_run` returns immediately;
 `RunService.start` schedules execution with `asyncio.create_task`.
 
 Discovery (EPIC 10): tools `catalog_*`, `flow_list`, `flow_get`, `flow_update`
 plus resources `navbe://catalog/*`, `navbe://flows`, `navbe://flows/{flow_id}`.
+Credentials (EPIC 11): `secret_*`. GitHub flows sync (EPIC 12): `sync_*`.
 Tool names are underscored (`flow_create`, not `flow.create`) for Claude-safe
 `^[a-zA-Z0-9_-]{1,64}$` names.
 

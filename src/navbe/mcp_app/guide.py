@@ -16,6 +16,8 @@ Claude Desktop often does not surface resources to the model.
 3. Call `flow_list` to see what already exists. Use `flow_get` before editing.
 4. For API keys: prefer `secret_set` (local JSON credentials) over editing `.env`.
    Use `secret_list` / `secret_has` to check keys — values are never returned.
+5. To share flows via GitHub: `secret_set` → `GITHUB_TOKEN`, then
+   `sync_configure` / `sync_init` / `sync_pull` or `sync_push` (flows only).
 
 Do **not** invent step_type or connector type strings — only use catalog keys.
 
@@ -94,6 +96,12 @@ Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 | `flow_status` | Poll run |
 | `flow_resume` | Continue after approval |
 | `flow_list_runs` | Run history for one flow |
+| `sync_configure` / `sync_init` / `sync_status` | Bind a GitHub flows repo |
+| `sync_branch_create` / `sync_checkout` | Branching |
+| `sync_push` / `sync_pull` | Push/pull **only** `flows/<flow_id>/flow.json` |
+
+GitHub sync never touches runs, credentials, archives, or Python step source.
+Repo layout on GitHub: `flows/<flow_id>/flow.json`.
 
 ## Optional resources (if your client supports them)
 

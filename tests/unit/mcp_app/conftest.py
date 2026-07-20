@@ -193,11 +193,51 @@ class FakeSecretsService:
         return key in self._data
 
 
+class FakeSyncService:
+    """Minimal sync service fake for MCP registration tests."""
+
+    async def configure(self, **kwargs: Any) -> Any:
+        from navbe.domains.sync.models import SyncConfig
+
+        return SyncConfig(remote_url=kwargs.get("remote_url") or "")
+
+    async def init(self) -> Any:
+        from navbe.domains.sync.models import SyncStatus
+
+        return SyncStatus(configured=True, initialized=True, branch="main")
+
+    async def status(self) -> Any:
+        from navbe.domains.sync.models import SyncStatus
+
+        return SyncStatus(configured=False, initialized=False)
+
+    async def branch_create(self, name: str) -> Any:
+        from navbe.domains.sync.models import SyncStatus
+
+        return SyncStatus(configured=True, initialized=True, branch=name)
+
+    async def checkout(self, branch: str) -> Any:
+        from navbe.domains.sync.models import SyncStatus
+
+        return SyncStatus(configured=True, initialized=True, branch=branch)
+
+    async def push(self, message: str | None = None) -> Any:
+        from navbe.domains.sync.models import SyncResult
+
+        return SyncResult(branch="main", message=message or "pushed")
+
+    async def pull(self) -> Any:
+        from navbe.domains.sync.models import SyncResult
+
+        return SyncResult(branch="main", message="pulled")
+
+
 def make_server(
     flow_service: FakeFlowService | None = None,
     run_service: FakeRunService | None = None,
     catalog_service: FakeCatalogService | None = None,
     secrets_service: FakeSecretsService | None = None,
+    sync_service: FakeSyncService | None = None,
 ):
     """Build an MCP server with fakes."""
     from navbe.mcp_app.server import create_mcp_server
@@ -207,4 +247,5 @@ def make_server(
         run_service or FakeRunService(),  # type: ignore[arg-type]
         catalog_service or FakeCatalogService(),  # type: ignore[arg-type]
         secrets_service or FakeSecretsService(),  # type: ignore[arg-type]
+        sync_service or FakeSyncService(),  # type: ignore[arg-type]
     )

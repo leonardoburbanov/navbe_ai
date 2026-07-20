@@ -39,6 +39,7 @@ src/navbe/
     execution/      # run lifecycle, modes, history
     secrets/        # credential storage/resolution
     catalog/        # discovery of connectors, destinations, flows
+    sync/           # GitHub mirror of flows/<id>/flow.json only
   api/              # FastAPI routes (thin; call services)
   mcp_app/          # FastMCP tools (thin; call services)
   dependencies.py
@@ -142,7 +143,7 @@ from navbe.db.sqlite_connectors import SqliteConnectorRepo
 
 **Ask first**
 
-- New domain packages beyond the six listed above.
+- New domain packages beyond those listed in Layout (including `sync`).
 - New destination types beyond DuckDB / CSV.
 - Schema migrations that drop or rename persisted columns.
 - Changing MCP tool names or argument shapes (agents depend on stability).

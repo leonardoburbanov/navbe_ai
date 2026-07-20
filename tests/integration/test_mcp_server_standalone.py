@@ -72,13 +72,14 @@ def build_real_mcp_server(tmp_path: Path, *, llm_client: Any | None = None):
     )
     run_service = RunService(engine, flow_service, connector_service)
     catalog_service = CatalogService()
-    from tests.unit.mcp_app.conftest import FakeSecretsService
+    from tests.unit.mcp_app.conftest import FakeSecretsService, FakeSyncService
 
     mcp = create_mcp_server(
         flow_service,
         run_service,
         catalog_service,
         FakeSecretsService(),  # type: ignore[arg-type]
+        FakeSyncService(),  # type: ignore[arg-type]
     )
     mcp._navbe_db_engine = db_engine  # type: ignore[attr-defined]
     mcp._navbe_run_service = run_service  # type: ignore[attr-defined]

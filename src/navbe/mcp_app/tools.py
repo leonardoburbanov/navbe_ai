@@ -10,6 +10,7 @@ from navbe.domains.execution.service import RunService
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 from navbe.domains.secrets.service import SecretsService
+from navbe.domains.sync.service import SyncService
 from navbe.mcp_app.errors import mcp_tool_error_handler
 from navbe.mcp_app.guide import NAVBE_HOWTO
 
@@ -21,8 +22,9 @@ def register_tools(
     run_service: RunService,
     catalog_service: CatalogService,
     secrets_service: SecretsService,
+    sync_service: SyncService,
 ) -> None:
-    """Register flow_*, catalog_*, and secret_* tools on ``mcp``.
+    """Register flow_*, catalog_*, secret_*, and sync_* tools on ``mcp``.
 
     Underscored names (not dotted) so clients like Claude accept them:
     ``^[a-zA-Z0-9_-]{1,64}$``.
@@ -176,3 +178,67 @@ def register_tools(
         """List runs for one flow, most recent first."""
         runs = await run_service.list_runs(flow_id)
         return {"runs": [run.model_dump(mode="json") for run in runs]}
+
+    @mcp.tool(name="sync_configure")
+    @mcp_tool_error_handler
+    async def sync_configure(
+        remote_url: str | None = None,
+        local_repo_dir: str | None = None,
+        flows_subdir: str | None = None,
+        default_branch: str | None = None,
+        token_secret_key: str | None = None,
+    ) -> dict:
+        """Set GitHub sync settings. Token via secret_set(GITHUB_TOKEN), never here.
+
+        Syncs only flows/<flow_id>/flow.json organization — not runs or credentials.
+        """
+        config = await sync_service.configure(
+            remote_url=remote_url,
+            local_repo_dir=local_repo_dir,
+            flows_subdir=flows_subdir,
+            default_branch=default_branch,
+            token_secret_key=token_secret_key,
+        )
+        return config.model_dump()
+
+    @mcp.tool(name="sync_init")
+    @mcp_tool_error_handler
+    async def sync_init() -> dict:
+        """Clone or bind the configured GitHub repo (flows mirror)."""
+        status = await sync_service.init()
+        return status.model_dump()
+
+    @mcp.tool(name="sync_status")
+    @mcp_tool_error_handler
+    async def sync_status() -> dict:
+        """Branch, dirty flag, and local vs remote flow counts."""
+        status = await sync_service.status()
+        return status.model_dump()
+
+    @mcp.tool(name="sync_branch_create")
+    @mcp_tool_error_handler
+    async def sync_branch_create(name: str) -> dict:
+        """Create and checkout a branch from default_branch."""
+        status = await sync_service.branch_create(name)
+        return status.model_dump()
+
+    @mcp.tool(name="sync_checkout")
+    @mcp_tool_error_handler
+    async def sync_checkout(branch: str) -> dict:
+        """Checkout an existing branch (fails if working tree dirty)."""
+        status = await sync_service.checkout(branch)
+        return status.model_dump()
+
+    @mcp.tool(name="sync_push")
+    @mcp_tool_error_handler
+    async def sync_push(message: str | None = None) -> dict:
+        """Push local flow.json files to GitHub (flows organization only)."""
+        result = await sync_service.push(message)
+        return result.model_dump()
+
+    @mcp.tool(name="sync_pull")
+    @mcp_tool_error_handler
+    async def sync_pull() -> dict:
+        """Pull flows/<id>/flow.json from GitHub into Navbe (ff-only)."""
+        result = await sync_service.pull()
+        return result.model_dump()

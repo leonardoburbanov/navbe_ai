@@ -76,6 +76,26 @@ class FakeFlowRepository:
             path=f"/fake/{flow_spec.flow_id}/flow.json",
         )
 
+    async def upsert(self, flow_spec: FlowSpec) -> FlowMetadata:
+        """Upsert without archival."""
+        now = datetime.now(UTC)
+        if flow_spec.flow_id in self.flows:
+            self.flows[flow_spec.flow_id] = flow_spec
+            return FlowMetadata(
+                flow_id=flow_spec.flow_id,
+                name=flow_spec.name,
+                created_at=now,
+                updated_at=now,
+                version=self.versions.get(flow_spec.flow_id, 1),
+                path=f"/fake/{flow_spec.flow_id}/flow.json",
+            )
+        return await self.save(flow_spec)
+
+    async def delete_index(self, flow_id: str) -> None:
+        """Remove from in-memory store."""
+        self.flows.pop(flow_id, None)
+        self.versions.pop(flow_id, None)
+
 
 def test_fake_repository_satisfies_protocol() -> None:
     """Runtime-checkable Protocol accepts structural implementation."""

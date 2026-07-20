@@ -14,6 +14,7 @@ from navbe.dependencies import (
     get_flow_service,
     get_run_service,
     get_secrets_service,
+    get_sync_service,
 )
 from navbe.domains.flows.repository import metadata
 from navbe.mcp_app.server import create_mcp_server
@@ -40,6 +41,7 @@ def main(argv: list[str] | None = None) -> None:
         run_service=get_run_service(),
         catalog_service=get_catalog_service(),
         secrets_service=get_secrets_service(),
+        sync_service=get_sync_service(),
     )
     # Verified against fastmcp 3.4.x: transport="stdio". Banner must stay off
     # so stdout remains a clean MCP JSON-RPC channel.

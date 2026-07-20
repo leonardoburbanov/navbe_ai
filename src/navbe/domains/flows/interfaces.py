@@ -24,3 +24,11 @@ class FlowRepository(Protocol):
     async def update(self, flow_spec: FlowSpec) -> FlowMetadata:
         """Update an existing flow, archiving the previous version."""
         ...
+
+    async def upsert(self, flow_spec: FlowSpec) -> FlowMetadata:
+        """Write flow.json and upsert index without archival (sync import)."""
+        ...
+
+    async def delete_index(self, flow_id: str) -> None:
+        """Remove a flow_id from the index after its directory was deleted."""
+        ...

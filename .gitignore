@@ -18,6 +18,8 @@ htmlcov/
 navbe_flows/
 navbe_credentials.json
 *.credentials.json
+navbe_sync.json
+navbe_sync_repo/
 exports/
 
 # OS / IDE

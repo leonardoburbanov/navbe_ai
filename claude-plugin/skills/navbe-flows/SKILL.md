@@ -19,6 +19,8 @@ Prefer **tools** over `navbe://` resources — Claude Desktop often hides resour
 3. Call `flow_list`. Use `flow_get` before editing an existing `flow_id`.
 4. Store API keys with `secret_set` (local `navbe_credentials.json`). Use
    `secret_list` / `secret_has` — never expect values back. Prefer this over `.env`.
+5. GitHub flows sync: `secret_set` key=`GITHUB_TOKEN`, then `sync_configure` →
+   `sync_init` → `sync_pull` / `sync_push`. Only `flows/<id>/flow.json` syncs.
 
 Never invent `step_type` or connector `type` strings — only catalog keys.
 
@@ -86,6 +88,17 @@ Confirm with `catalog_steps` before use:
 | `flow_run` | Start (ask first) |
 | `flow_status` / `flow_resume` | Poll / continue HITL |
 | `flow_list_runs` | History |
+| `sync_*` | GitHub mirror of `flows/<id>/flow.json` only (not runs/credentials) |
+
+## GitHub sync (flows organization only)
+
+1. `secret_set` → `GITHUB_TOKEN`
+2. `sync_configure` with `remote_url` (e.g. `https://github.com/org/navbe-flows.git`)
+3. `sync_init` (clone under `navbe_sync_repo/`)
+4. `sync_pull` to import remote `flows/<flow_id>/flow.json` into local Navbe
+5. Edit locally → `sync_branch_create` → `sync_push`
+
+Never sync runs, credentials, archived `flow.vN.json`, or step Python source.
 
 ## Rules
 

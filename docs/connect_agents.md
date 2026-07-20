@@ -124,7 +124,8 @@ On macOS/Linux, replace the directory with something like
 so it re-spawns the subprocess.
 
 **Verify:** Claude’s MCP / connector UI shows **navbe** as connected, with tools
-including `navbe_howto`, `catalog_steps`, `flow_list`, `flow_create`, `flow_run`.
+including `navbe_howto`, `catalog_steps`, `flow_list`, `secret_set`, `sync_pull`
+(flows/`<id>`/flow.json only — never runs or credentials).
 
 Still upload the **navbe-flows** skill (Option A skill-only) so Claude follows the
 discover → validate → create → ask → run loop automatically.

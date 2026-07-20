@@ -12,6 +12,7 @@ from sqlalchemy import (
     MetaData,
     String,
     Table,
+    delete,
     insert,
     select,
     update,
@@ -165,3 +166,65 @@ class FileSystemFlowRepository:
             version=new_version,
             path=str(path),
         )
+
+    async def upsert(self, flow_spec: FlowSpec) -> FlowMetadata:
+        """Write flow.json and upsert index without archival (for sync pull)."""
+        path = self._flow_path(flow_spec.flow_id)
+        await self._write_spec(path, flow_spec)
+        now = datetime.now(UTC).replace(tzinfo=None)
+
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(flows_index).where(flows_index.c.flow_id == flow_spec.flow_id)
+            )
+            row = result.one_or_none()
+            if row is None:
+                await session.execute(
+                    insert(flows_index).values(
+                        flow_id=flow_spec.flow_id,
+                        name=flow_spec.name,
+                        version=1,
+                        path=str(path),
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+                await session.commit()
+                return FlowMetadata(
+                    flow_id=flow_spec.flow_id,
+                    name=flow_spec.name,
+                    created_at=now,
+                    updated_at=now,
+                    version=1,
+                    path=str(path),
+                )
+
+            created_at = row.created_at
+            new_version = row.version
+            await session.execute(
+                update(flows_index)
+                .where(flows_index.c.flow_id == flow_spec.flow_id)
+                .values(
+                    name=flow_spec.name,
+                    path=str(path),
+                    updated_at=now,
+                )
+            )
+            await session.commit()
+
+        return FlowMetadata(
+            flow_id=flow_spec.flow_id,
+            name=flow_spec.name,
+            created_at=created_at,
+            updated_at=now,
+            version=new_version,
+            path=str(path),
+        )
+
+    async def delete_index(self, flow_id: str) -> None:
+        """Remove a flow_id from the SQLite index (disk dir already removed)."""
+        async with self._session_factory() as session:
+            await session.execute(
+                delete(flows_index).where(flows_index.c.flow_id == flow_id)
+            )
+            await session.commit()
