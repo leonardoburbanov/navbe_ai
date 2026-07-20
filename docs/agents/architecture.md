@@ -155,6 +155,9 @@ domain services as MCP/REST — no HTTP round-trip.
 | `navbe runs` | Run history, status, live watch |
 | `navbe steps` | Available step types + schema |
 | `navbe serve` | FastAPI + MCP HTTP (formerly bare `navbe`) |
+| `navbe setup` | First-run onboarding (deps, MCP snippet, plugin path) |
+| `navbe info` | Paths, credential/sync readiness, version |
+| `navbe login --status` | Recommended API keys present (never values) |
 
 ## Persistence split (target)
 

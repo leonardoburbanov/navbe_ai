@@ -18,6 +18,7 @@ Config paths below were checked against current public docs
 git clone <repo>
 cd navbe_ai_v0.1   # or your local checkout path
 uv sync
+uv run navbe setup       # onboarding: deps, MCP snippet, next steps
 uv run navbe-mcp --help
 ```
 
@@ -239,12 +240,14 @@ setting before assuming a Navbe bug.
 Humans operate Navbe from the terminal without MCP:
 
 ```bash
-uv run navbe --help
-uv run navbe secret set GITHUB_TOKEN    # credentials
-uv run navbe sync status                # GitHub flows mirror
-uv run navbe runs watch <RUN_ID>        # live run status
-uv run navbe steps                      # available step types
-uv run navbe serve                      # HTTP API + MCP mount
+uv run navbe setup          # start here (like agents-cli setup)
+uv run navbe info           # paths + readiness
+uv run navbe login --status # which keys are set (no values)
+uv run navbe secret set GITHUB_TOKEN
+uv run navbe sync status
+uv run navbe runs watch <RUN_ID>
+uv run navbe steps
+uv run navbe serve
 ```
 
 Agents should keep using `navbe-mcp`.

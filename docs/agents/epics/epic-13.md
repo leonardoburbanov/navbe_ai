@@ -14,6 +14,9 @@
 
 ```
 uv run navbe --help
+uv run navbe setup                    # first-run onboarding
+uv run navbe info [--json]            # paths, credentials readiness, sync
+uv run navbe login [--status]         # recommended key presence
 uv run navbe secret set|list|delete|has
 uv run navbe sync configure|init|status|branch create|checkout|push|pull
 uv run navbe runs list|status|watch

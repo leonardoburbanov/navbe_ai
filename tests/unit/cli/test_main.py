@@ -10,6 +10,9 @@ def test_navbe_help_lists_command_groups() -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
+    assert "setup" in result.output
+    assert "info" in result.output
+    assert "login" in result.output
     assert "secret" in result.output
     assert "sync" in result.output
     assert "runs" in result.output

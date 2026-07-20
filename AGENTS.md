@@ -80,6 +80,7 @@ Rules:
 uv sync
 
 # human CLI (secrets, sync, runs, steps)
+uv run navbe setup          # first-run onboarding
 uv run navbe --help
 uv run navbe serve
 
