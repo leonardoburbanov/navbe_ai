@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "navbe": {
-      "command": "uv",
+      "command": "C:\\Users\\DELL\\AppData\\Local\\hermes\\bin\\uv.exe",
       "args": [
         "run",
         "--directory",
