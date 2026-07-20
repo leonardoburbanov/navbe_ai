@@ -66,4 +66,5 @@ Prefer code as source of truth. No speculative docs for packages that do not exi
 - [EPIC 10 — MCP Discovery Parity](epics/epic-10.md) — done (list/get/update flows + catalog tool mirrors + `navbe://flows`)
 - [EPIC 11 — Local Credentials Store](epics/epic-11.md) — done (JSON credentials + MCP `secret_*`; env fallback)
 - [EPIC 12 — GitHub Sync & Branching](epics/epic-12.md) — done (flows/`<id>`/flow.json only; `sync_*` MCP)
+- [EPIC 13 — Human CLI](epics/epic-13.md) — done (`navbe` ops console: secret/sync/runs/steps/serve)
 - See also [../connect_agents.md](../connect_agents.md) for Claude Desktop / Cursor setup

@@ -58,10 +58,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-
-def main() -> None:
-    """Run the combined FastAPI + MCP process via uvicorn."""
-    import uvicorn
-
-    uvicorn.run("navbe.main:app", host="127.0.0.1", port=8000, reload=False)

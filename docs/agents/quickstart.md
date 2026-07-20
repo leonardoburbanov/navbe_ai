@@ -49,6 +49,7 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 10](epics/epic-10.md) — MCP discovery parity
 - [EPIC 11](epics/epic-11.md) — local credentials store
 - [EPIC 12](epics/epic-12.md) — GitHub sync (`flows/<id>/flow.json` only)
+- [EPIC 13](epics/epic-13.md) — human CLI (`navbe secret|sync|runs|steps|serve`)
 - [Connect agents](../connect_agents.md) — Claude Desktop plugin/skill + Cursor MCP setup
 - [Claude plugin](../../claude-plugin/) — `navbe-flows` skill + local `navbe-mcp`
 - [Architecture](architecture.md) — layers and domain pattern

@@ -143,6 +143,19 @@ Stdio clients (Claude Desktop, Cursor) use `uv run navbe-mcp`
 (`navbe.mcp_stdio:main`) — same services, `transport="stdio"`. See
 [../connect_agents.md](../connect_agents.md).
 
+## Human CLI
+
+`uv run navbe` is the ops console for humans (Click + Rich). It calls the same
+domain services as MCP/REST — no HTTP round-trip.
+
+| Command group | Role |
+| --- | --- |
+| `navbe secret` | Local credentials (values never printed) |
+| `navbe sync` | GitHub `flows/<id>/flow.json` mirror |
+| `navbe runs` | Run history, status, live watch |
+| `navbe steps` | Available step types + schema |
+| `navbe serve` | FastAPI + MCP HTTP (formerly bare `navbe`) |
+
 ## Persistence split (target)
 
 - **SQLite** (`aiosqlite` + SQLAlchemy async) — app/control-plane state

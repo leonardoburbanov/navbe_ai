@@ -1,0 +1,34 @@
+"""CLI runs commands."""
+
+from __future__ import annotations
+
+from click.testing import CliRunner
+
+from navbe.cli.main import cli
+from tests.unit.cli.conftest import FakeRunService
+
+
+def test_runs_list_and_status(monkeypatch) -> None:
+    """Runs list/status print run metadata."""
+    fake = FakeRunService()
+    monkeypatch.setattr("navbe.cli.runs.get_run_service", lambda: fake)
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["runs", "list", "demo"])
+    assert result.exit_code == 0
+    assert "r1" in result.output
+
+    result = runner.invoke(cli, ["runs", "status", "r1"])
+    assert result.exit_code == 0
+    assert "running" in result.output
+
+
+def test_runs_watch_until_completed(monkeypatch) -> None:
+    """Watch polls until terminal status."""
+    fake = FakeRunService()
+    monkeypatch.setattr("navbe.cli.runs.get_run_service", lambda: fake)
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["runs", "watch", "r1", "--interval", "0.01"])
+    assert result.exit_code == 0
+    assert "completed" in result.output.lower()

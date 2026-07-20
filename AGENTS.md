@@ -42,6 +42,7 @@ src/navbe/
     sync/           # GitHub mirror of flows/<id>/flow.json only
   api/              # FastAPI routes (thin; call services)
   mcp_app/          # FastMCP tools (thin; call services)
+  cli/              # Human ops console (Click + Rich)
   dependencies.py
   main.py
 pyproject.toml
@@ -78,11 +79,12 @@ Rules:
 # sync / install
 uv sync
 
-# run API (when scaffolded)
-uv run uvicorn navbe.api.app:app --reload
+# human CLI (secrets, sync, runs, steps)
+uv run navbe --help
+uv run navbe serve
 
-# run MCP server (when scaffolded)
-uv run python -m navbe.mcp
+# MCP server (agents)
+uv run navbe-mcp
 
 # tests
 uv run pytest

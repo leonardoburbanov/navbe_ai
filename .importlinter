@@ -5,6 +5,6 @@ root_package = navbe
 name = "domains must not depend on mcp_app or api"
 type = layers
 layers =
-    navbe.mcp_app | navbe.api
+    navbe.mcp_app | navbe.api | navbe.cli
     navbe.domains
     navbe.core

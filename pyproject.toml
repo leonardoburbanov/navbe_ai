@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "aiofiles>=25.1.0",
     "aiosqlite>=0.22.1",
+    "click>=8.1.0",
     "duckdb>=1.5.4",
     "fastapi>=0.139.2",
     "fastmcp>=2.0",
@@ -20,13 +21,14 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "python-dotenv>=1.2.2",
+    "rich>=13.0.0",
     "simpleeval>=1.0.7",
     "sqlalchemy[asyncio]>=2.0.51",
     "uvicorn>=0.51.0",
 ]
 
 [project.scripts]
-navbe = "navbe.main:main"
+navbe = "navbe.cli.main:main"
 navbe-mcp = "navbe.mcp_stdio:main"
 
 [build-system]

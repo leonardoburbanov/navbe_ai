@@ -25,6 +25,15 @@ uv run navbe-mcp --help
 
 ### 2. Set required secrets
 
+Prefer the human CLI (stores keys in `navbe_credentials.json`, never echoes values):
+
+```bash
+uv run navbe secret set CRM_API_KEY
+uv run navbe secret list
+```
+
+Or use `.env` (legacy):
+
 ```bash
 cp .env.example .env
 # edit .env — set CRM_API_KEY (and NAVBE_ANTHROPIC_API_KEY if you want live llm_call)
@@ -222,6 +231,23 @@ approval UX:
 
 If Cursor runs `flow_run` without asking, check the active mode / Auto-Run
 setting before assuming a Navbe bug.
+
+---
+
+## 6B. Human CLI (not for agents)
+
+Humans operate Navbe from the terminal without MCP:
+
+```bash
+uv run navbe --help
+uv run navbe secret set GITHUB_TOKEN    # credentials
+uv run navbe sync status                # GitHub flows mirror
+uv run navbe runs watch <RUN_ID>        # live run status
+uv run navbe steps                      # available step types
+uv run navbe serve                      # HTTP API + MCP mount
+```
+
+Agents should keep using `navbe-mcp`.
 
 ---
 
