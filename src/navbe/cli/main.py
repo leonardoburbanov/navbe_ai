@@ -6,6 +6,7 @@ import io
 import sys
 
 import click
+from rich.console import Console
 
 from navbe.cli.info import info_cmd
 from navbe.cli.login import login_cmd
@@ -38,7 +39,7 @@ def cli(ctx: click.Context) -> None:
 
     \b
     Quick start:
-      navbe setup              First-run onboarding (deps, MCP snippet, next steps)
+      navbe setup              Interactive onboarding (prompts; use --yes to skip)
       navbe info               Paths, credentials readiness, sync state
       navbe login --status     Which API keys are present (never values)
       navbe secret set KEY     Store a credential (hidden prompt)
@@ -49,9 +50,15 @@ def cli(ctx: click.Context) -> None:
     """
     if ctx.invoked_subcommand is None:
         print_banner()
+        console = Console()
+        console.print(
+            "[dim]New here? Run [bold cyan]navbe setup[/bold cyan] "
+            "for an interactive walkthrough.[/dim]"
+        )
+        console.print()
         print_quick_start()
         click.echo()
-        click.echo("Run navbe --help for all commands, or navbe setup to begin.")
+        click.echo("Run navbe setup to begin, or navbe --help for all commands.")
 
 
 cli.add_command(setup_cmd)
