@@ -14,7 +14,12 @@ from navbe.mcp_app.errors import parse_tool_error
 from navbe.mcp_app.server import create_mcp_server
 from tests.unit.domains.execution.test_interfaces import FakeExecutionEngine
 from tests.unit.domains.execution.test_service import FakeConnectorService, FakeFlowService
-from tests.unit.mcp_app.conftest import FakeCatalogService, FakeRunService, make_server
+from tests.unit.mcp_app.conftest import (
+    FakeCatalogService,
+    FakeRunService,
+    FakeSecretsService,
+    make_server,
+)
 
 
 async def test_flow_run_returns_run_id_without_blocking() -> None:
@@ -47,6 +52,7 @@ async def test_flow_run_returns_run_id_without_blocking() -> None:
         FakeFlowService(flow),  # type: ignore[arg-type]
         run_service,
         FakeCatalogService(),  # type: ignore[arg-type]
+        FakeSecretsService(),  # type: ignore[arg-type]
     )
     async with Client(server) as client:
         result = await client.call_tool("flow_run", {"flow_id": "slow", "initial_input": {}})

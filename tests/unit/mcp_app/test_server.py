@@ -13,6 +13,10 @@ async def test_server_registers_expected_tools() -> None:
         names = {tool.name for tool in tools}
     assert {
         "navbe_howto",
+        "secret_set",
+        "secret_list",
+        "secret_delete",
+        "secret_has",
         "catalog_steps",
         "catalog_connectors",
         "catalog_full",

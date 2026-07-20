@@ -11,6 +11,7 @@ def test_settings_defaults() -> None:
     """Defaults match the documented Settings fields when env is unset."""
     settings = Settings(_env_file=None)
     assert settings.db_path == Path("./navbe.db")
+    assert settings.credentials_path == Path("./navbe_credentials.json")
 
 
 def test_settings_env_override(monkeypatch: pytest.MonkeyPatch) -> None:

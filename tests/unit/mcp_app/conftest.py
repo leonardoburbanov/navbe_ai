@@ -168,10 +168,36 @@ class FakeRunService:
         return runs
 
 
+class FakeSecretsService:
+    """Secrets service fake for MCP tool tests (never exposes values in list)."""
+
+    def __init__(self) -> None:
+        self._data: dict[str, str] = {}
+        self.set_error: Exception | None = None
+
+    async def set(self, key: str, value: str) -> None:
+        if self.set_error is not None:
+            raise self.set_error
+        self._data[key] = value
+
+    async def delete(self, key: str) -> bool:
+        if key not in self._data:
+            return False
+        del self._data[key]
+        return True
+
+    async def list_keys(self) -> list[str]:
+        return sorted(self._data.keys())
+
+    async def has(self, key: str) -> bool:
+        return key in self._data
+
+
 def make_server(
     flow_service: FakeFlowService | None = None,
     run_service: FakeRunService | None = None,
     catalog_service: FakeCatalogService | None = None,
+    secrets_service: FakeSecretsService | None = None,
 ):
     """Build an MCP server with fakes."""
     from navbe.mcp_app.server import create_mcp_server
@@ -180,4 +206,5 @@ def make_server(
         flow_service or FakeFlowService(),  # type: ignore[arg-type]
         run_service or FakeRunService(),  # type: ignore[arg-type]
         catalog_service or FakeCatalogService(),  # type: ignore[arg-type]
+        secrets_service or FakeSecretsService(),  # type: ignore[arg-type]
     )

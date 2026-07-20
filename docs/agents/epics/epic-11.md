@@ -1,6 +1,6 @@
 # EPIC 11 — Local Credentials Store
 
-**Status:** planned  
+**Status:** done  
 **Goal:** Manage external auth (API keys, tokens) via a local JSON credentials store — Cursor-style — instead of requiring everything in `.env`. Agents set/list/delete credentials over MCP; `{"$secret": "KEY"}` resolution prefers the store, then falls back to env.  
 **Non-goal:** Cloud vaults (1Password/Vault); OAuth browser flows; encrypting the JSON file beyond OS file permissions (v0.1); returning secret **values** over MCP/API; GitHub sync (EPIC 12).
 
@@ -123,13 +123,13 @@ REST mirrors under `/api/v1/secrets` (same no-value rule) for parity with flows.
 
 ## Definition of Done
 
-- [ ] Credentials file path configurable; default gitignored
-- [ ] `$secret` resolves from JSON file first, then env
-- [ ] MCP `secret_set` / `secret_list` / `secret_delete` / `secret_has` green; values never returned
-- [ ] REST parity for the same operations
-- [ ] Env-only setups still work with no credentials file
-- [ ] `uv run ruff check .` / `ty check src/` / `lint-imports` / relevant pytest green
-- [ ] Agent docs + howto/skill updated
+- [x] Credentials file path configurable; default gitignored
+- [x] `$secret` resolves from JSON file first, then env
+- [x] MCP `secret_set` / `secret_list` / `secret_delete` / `secret_has` green; values never returned
+- [x] REST parity for the same operations
+- [x] Env-only setups still work with no credentials file
+- [x] `uv run ruff check .` / `ty check src/` / `lint-imports` / relevant pytest green
+- [x] Agent docs + howto/skill updated
 
 ## Notes
 

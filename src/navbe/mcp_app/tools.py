@@ -9,6 +9,7 @@ from navbe.domains.catalog.service import CatalogService
 from navbe.domains.execution.service import RunService
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
+from navbe.domains.secrets.service import SecretsService
 from navbe.mcp_app.errors import mcp_tool_error_handler
 from navbe.mcp_app.guide import NAVBE_HOWTO
 
@@ -19,8 +20,9 @@ def register_tools(
     flow_service: FlowService,
     run_service: RunService,
     catalog_service: CatalogService,
+    secrets_service: SecretsService,
 ) -> None:
-    """Register flow_* and catalog_* tools on ``mcp``.
+    """Register flow_*, catalog_*, and secret_* tools on ``mcp``.
 
     Underscored names (not dotted) so clients like Claude accept them:
     ``^[a-zA-Z0-9_-]{1,64}$``.
@@ -35,6 +37,37 @@ def register_tools(
         shape, and tool map. Prefer this over ``navbe://`` resources.
         """
         return {"guide": NAVBE_HOWTO}
+
+    @mcp.tool(name="secret_set")
+    @mcp_tool_error_handler
+    async def secret_set(key: str, value: str) -> dict:
+        """Store a secret in the local credentials JSON file.
+
+        Never returns the value. Prefer this over editing .env for agent keys.
+        """
+        await secrets_service.set(key, value)
+        return {"key": key, "stored": True}
+
+    @mcp.tool(name="secret_list")
+    @mcp_tool_error_handler
+    async def secret_list() -> dict:
+        """List credential keys stored in the local JSON file (never values)."""
+        keys = await secrets_service.list_keys()
+        return {"keys": keys}
+
+    @mcp.tool(name="secret_delete")
+    @mcp_tool_error_handler
+    async def secret_delete(key: str) -> dict:
+        """Delete a key from the local credentials JSON file."""
+        deleted = await secrets_service.delete(key)
+        return {"key": key, "deleted": deleted}
+
+    @mcp.tool(name="secret_has")
+    @mcp_tool_error_handler
+    async def secret_has(key: str) -> dict:
+        """Check whether a key exists in credentials file or environment (no value)."""
+        present = await secrets_service.has(key)
+        return {"key": key, "present": present}
 
     @mcp.tool(name="catalog_steps")
     @mcp_tool_error_handler

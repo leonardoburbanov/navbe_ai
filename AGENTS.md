@@ -185,7 +185,8 @@ Prefer querying a synced DuckDB destination over calling the live source for ana
 ## Security
 
 - Secrets domain owns storage and resolution; never echo secret values in API/MCP responses.
-- Local data dirs (SQLite, DuckDB files, exports) stay on disk; do not assume network share semantics.
+- Prefer `secret_set` / local `navbe_credentials.json` over committing keys; file is gitignored.
+- Local data dirs (SQLite, DuckDB files, exports, credentials JSON) stay on disk; do not assume network share semantics.
 - Read-only SQL for destination query tools — no DDL/DML via query endpoints.
 
 ---

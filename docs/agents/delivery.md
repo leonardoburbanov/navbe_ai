@@ -64,6 +64,6 @@ Prefer code as source of truth. No speculative docs for packages that do not exi
 - [EPIC 8 — FastAPI Wiring](epics/epic-8.md) — done (dependencies + REST + MCP mount)
 - [EPIC 9 — E2E Demo + Clients](epics/epic-9.md) — done (stdio entrypoint + dual-client docs)
 - [EPIC 10 — MCP Discovery Parity](epics/epic-10.md) — done (list/get/update flows + catalog tool mirrors + `navbe://flows`)
-- [EPIC 11 — Local Credentials Store](epics/epic-11.md) — planned (JSON credentials + MCP `secret_*`; env fallback)
+- [EPIC 11 — Local Credentials Store](epics/epic-11.md) — done (JSON credentials + MCP `secret_*`; env fallback)
 - [EPIC 12 — GitHub Sync & Branching](epics/epic-12.md) — planned (after 11; sync flows + branches)
 - See also [../connect_agents.md](../connect_agents.md) for Claude Desktop / Cursor setup

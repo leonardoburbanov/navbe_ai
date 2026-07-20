@@ -1,15 +1,15 @@
-"""Secrets resolution use-cases."""
+"""Secrets resolution and local credentials store use-cases."""
 
 import os
 from typing import Any
 
 from dotenv import load_dotenv
 
-from navbe.core.exceptions import NotFoundError
-from navbe.domains.secrets.interfaces import SecretsProvider
-from navbe.domains.secrets.models import is_secret_ref, parse_secret_ref
+from navbe.core.exceptions import NotFoundError, ValidationError
+from navbe.domains.secrets.interfaces import SecretsProvider, SecretsStore
+from navbe.domains.secrets.models import is_secret_ref, parse_secret_ref, validate_secret_key
 
-# ponytail: load once at import — upgrade: injectable env source / secrets vault
+# ponytail: load once at import — upgrade: injectable env source
 load_dotenv()
 
 
@@ -29,13 +29,43 @@ class EnvSecretsProvider:
             )
         return value
 
+    async def has(self, key: str) -> bool:
+        """True if ``key`` is set in the process environment."""
+        return key in os.environ
+
 
 class SecretsService:
-    """Resolve secret refs for connectors and other consumers."""
+    """Resolve secret refs and manage the local credentials store."""
 
-    def __init__(self, provider: SecretsProvider) -> None:
-        """Create a service with an injectable provider."""
+    def __init__(
+        self,
+        provider: SecretsProvider,
+        store: SecretsStore | None = None,
+        *,
+        presence_checks: list[Any] | None = None,
+    ) -> None:
+        """Create a service with resolve provider and optional mutable store.
+
+        ``presence_checks`` are objects with ``async has(key) -> bool`` used by
+        ``has()`` (JSON store then env). Defaults to ``[store]`` when store set.
+        """
         self._provider = provider
+        self._store = store
+        if presence_checks is not None:
+            self._presence = list(presence_checks)
+        elif store is not None:
+            self._presence = [store]
+        else:
+            self._presence = []
+
+    def _require_store(self) -> SecretsStore:
+        """Return the store or raise if credentials file management is disabled."""
+        if self._store is None:
+            raise ValidationError(
+                "Credentials store is not configured",
+                details={"hint": "set NAVBE_CREDENTIALS_PATH and restart navbe"},
+            )
+        return self._store
 
     async def resolve_ref(self, key: str) -> str:
         """Resolve a single secret key via the provider."""
@@ -44,6 +74,30 @@ class SecretsService:
     async def resolve_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """Recursively replace every ``{"$secret": "X"}`` leaf with its value."""
         return await self._walk(config)
+
+    async def set(self, key: str, value: str) -> None:
+        """Store ``key`` in the local credentials file."""
+        validate_secret_key(key)
+        await self._require_store().set(key, value)
+
+    async def delete(self, key: str) -> bool:
+        """Delete ``key`` from the local credentials file."""
+        validate_secret_key(key)
+        return await self._require_store().delete(key)
+
+    async def list_keys(self) -> list[str]:
+        """List keys in the local credentials file (never values)."""
+        if self._store is None:
+            return []
+        return await self._store.list_keys()
+
+    async def has(self, key: str) -> bool:
+        """True if ``key`` is present in the credentials file or environment."""
+        validate_secret_key(key)
+        for checker in self._presence:
+            if await checker.has(key):
+                return True
+        return False
 
     async def _walk(self, node: Any) -> Any:
         """Walk dict/list trees replacing secret refs."""

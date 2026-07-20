@@ -14,6 +14,8 @@ Claude Desktop often does not surface resources to the model.
 1. Call tool `navbe_howto` (this text) if you are unsure.
 2. Call `catalog_steps` and `catalog_connectors` (or `catalog_full`) before authoring.
 3. Call `flow_list` to see what already exists. Use `flow_get` before editing.
+4. For API keys: prefer `secret_set` (local JSON credentials) over editing `.env`.
+   Use `secret_list` / `secret_has` to check keys — values are never returned.
 
 Do **not** invent step_type or connector type strings — only use catalog keys.
 
@@ -62,7 +64,8 @@ Do **not** invent step_type or connector type strings — only use catalog keys.
 ```
 
 Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
-(never put live secret values in the spec).
+(never put live secret values in the spec). Store keys with `secret_set`
+(writes `navbe_credentials.json`); resolution order is credentials file, then env.
 
 ## Step types (discover via catalog_steps)
 
@@ -82,6 +85,7 @@ Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 | Tool | When |
 | --- | --- |
 | `navbe_howto` | First call / stuck |
+| `secret_set` / `secret_list` / `secret_delete` / `secret_has` | Local credentials (no values) |
 | `catalog_steps` / `catalog_connectors` / `catalog_full` | Before authoring |
 | `flow_list` / `flow_get` | Discover existing flows |
 | `flow_validate` | Cheap check before save |

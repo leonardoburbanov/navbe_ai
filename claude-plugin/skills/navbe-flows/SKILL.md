@@ -17,6 +17,8 @@ Prefer **tools** over `navbe://` resources — Claude Desktop often hides resour
 1. Call `navbe_howto` if unsure of the loop.
 2. Call `catalog_steps` and `catalog_connectors` (or `catalog_full`).
 3. Call `flow_list`. Use `flow_get` before editing an existing `flow_id`.
+4. Store API keys with `secret_set` (local `navbe_credentials.json`). Use
+   `secret_list` / `secret_has` — never expect values back. Prefer this over `.env`.
 
 Never invent `step_type` or connector `type` strings — only catalog keys.
 
@@ -63,6 +65,7 @@ Never invent `step_type` or connector `type` strings — only catalog keys.
 ```
 
 Secrets: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}` — never paste live secrets.
+Store with `secret_set`; resolves from credentials JSON then env.
 
 ## Common step types
 
@@ -75,6 +78,7 @@ Confirm with `catalog_steps` before use:
 | Tool | Use |
 | --- | --- |
 | `navbe_howto` | Playbook / stuck |
+| `secret_set` / `secret_list` / `secret_delete` / `secret_has` | Local credentials (no values returned) |
 | `catalog_*` | Valid types before authoring |
 | `flow_list` / `flow_get` | Discover / inspect |
 | `flow_validate` | Cheap check |

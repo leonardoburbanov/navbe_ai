@@ -8,6 +8,7 @@ from pathlib import Path
 import aiofiles
 
 from navbe.core.exceptions import NotFoundError, ValidationError
+from navbe.domains.secrets.interfaces import SecretsProvider
 from navbe.domains.secrets.models import validate_secret_key
 
 
@@ -117,7 +118,7 @@ class JsonFileSecretsProvider:
 class ChainedSecretsProvider:
     """Try providers in order; first successful resolve wins."""
 
-    def __init__(self, providers: list[JsonFileSecretsProvider | object]) -> None:
+    def __init__(self, providers: list[SecretsProvider]) -> None:
         """Create a chain; each item must implement ``async resolve(key)``."""
         self._providers = list(providers)
 
@@ -126,7 +127,7 @@ class ChainedSecretsProvider:
         last_error: NotFoundError | None = None
         for provider in self._providers:
             try:
-                return await provider.resolve(key)  # type: ignore[no-any-return]
+                return await provider.resolve(key)
             except NotFoundError as exc:
                 last_error = exc
         if last_error is not None:

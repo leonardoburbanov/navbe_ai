@@ -68,8 +68,11 @@ Built-ins registered in `ConnectorRegistry`:
 
 ## Secrets domain
 
-v0.1 resolves `{"$secret": "KEY"}` leaves from process env / `.env`.
-`ConnectorService` injects `SecretsService(EnvSecretsProvider())` when wired.
+`SecretsService` resolves `{"$secret": "KEY"}` leaves in connector configs.
+Resolution order: local JSON credentials file (`NAVBE_CREDENTIALS_PATH`, default
+`./navbe_credentials.json`) then process env / `.env`. Agents manage the JSON
+store via MCP `secret_set` / `secret_list` / `secret_delete` / `secret_has`
+(or REST `/api/v1/secrets`) — values are never returned.
 Missing keys raise `NotFoundError` with the key name and a hint — never a secret value.
 
 ## Flows domain

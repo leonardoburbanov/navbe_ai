@@ -128,7 +128,14 @@ def build_real_mcp_server(tmp_path: Path, *, llm_client: Any | None = None):
         llm_client=llm_client or FakeLLMClient(fixed_route="handle"),
     )
     run_service = RunService(engine, flow_service, connector_service)
-    mcp = create_mcp_server(flow_service, run_service, CatalogService())
+    from tests.unit.mcp_app.conftest import FakeSecretsService
+
+    mcp = create_mcp_server(
+        flow_service,
+        run_service,
+        CatalogService(),
+        FakeSecretsService(),  # type: ignore[arg-type]
+    )
     mcp._navbe_db_engine = db_engine  # type: ignore[attr-defined]
     mcp._navbe_run_service = run_service  # type: ignore[attr-defined]
     mcp._navbe_flows_dir = flows_dir  # type: ignore[attr-defined]
