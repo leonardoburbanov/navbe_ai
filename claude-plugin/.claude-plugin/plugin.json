@@ -13,6 +13,5 @@
     "flows",
     "orchestration",
     "local"
-  ],
-  "mcpServers": "./.mcp.json"
+  ]
 }

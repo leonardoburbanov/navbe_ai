@@ -1,13 +1,11 @@
 {
-  "mcpServers": {
-    "navbe": {
-      "command": "C:\\Users\\DELL\\AppData\\Local\\hermes\\bin\\uv.exe",
-      "args": [
-        "run",
-        "--directory",
-        "C:/NavbeAI/navbe_ai_v0.1",
-        "navbe-mcp"
-      ]
-    }
+  "navbe": {
+    "command": "C:\\Users\\DELL\\AppData\\Local\\hermes\\bin\\uv.exe",
+    "args": [
+      "run",
+      "--directory",
+      "C:/NavbeAI/navbe_ai_v0.1",
+      "navbe-mcp"
+    ]
   }
 }

@@ -1,16 +1,16 @@
-"""Rebuild Claude Desktop packages with Unix forward-slash zip paths.
+"""Rebuild Claude upload packages with Unix forward-slash zip paths.
 
 Do not use PowerShell Compress-Archive — it embeds backslashes and Claude
 rejects the zip with \"path with invalid characters\".
 
 Produces:
-- navbe.mcpb — Claude Desktop Extension (Settings → Extensions). This is what
-  actually registers MCP tools.
-- navbe-plugin.zip — Claude Code / Customize → Plugins (skill + .mcp.json).
-- navbe-flows-skill.zip — skill-only upload.
+- navbe-plugin.zip / navbe.plugin — Customize → Plugins (skill + .mcp.json)
+- navbe.mcpb — Desktop Extensions (Settings → Extensions; may require .mcpb)
+- navbe-flows-skill.zip — skill-only upload
 """
 
 from pathlib import Path
+import shutil
 import zipfile
 
 ROOT = Path(__file__).resolve().parent
@@ -27,7 +27,16 @@ def _write_zip(dest: Path, members: list[tuple[Path, str]]) -> None:
 
 
 def main() -> None:
-    """Build mcpb + plugin/skill zips."""
+    """Build plugin, mcpb, and skill packages."""
+    plugin_members = [
+        (ROOT / ".claude-plugin" / "plugin.json", ".claude-plugin/plugin.json"),
+        (ROOT / ".mcp.json", ".mcp.json"),
+        (ROOT / "skills" / "navbe-flows" / "SKILL.md", "skills/navbe-flows/SKILL.md"),
+    ]
+    _write_zip(ROOT / "navbe-plugin.zip", plugin_members)
+    # Same bytes, extension Claude's Plugins UI also accepts.
+    shutil.copyfile(ROOT / "navbe-plugin.zip", ROOT / "navbe.plugin")
+
     _write_zip(
         ROOT / "navbe.mcpb",
         [
@@ -36,21 +45,15 @@ def main() -> None:
         ],
     )
     _write_zip(
-        ROOT / "navbe-plugin.zip",
-        [
-            (ROOT / ".claude-plugin" / "plugin.json", ".claude-plugin/plugin.json"),
-            (ROOT / ".mcp.json", ".mcp.json"),
-            (ROOT / "skills" / "navbe-flows" / "SKILL.md", "skills/navbe-flows/SKILL.md"),
-        ],
-    )
-    _write_zip(
         ROOT / "navbe-flows-skill.zip",
         [
-            # Folder name must match YAML ``name: navbe-flows``.
             (ROOT / "skills" / "navbe-flows" / "SKILL.md", "navbe-flows/SKILL.md"),
         ],
     )
-    print("Wrote navbe.mcpb, navbe-plugin.zip, and navbe-flows-skill.zip")
+    print(
+        "Wrote navbe-plugin.zip, navbe.plugin, navbe.mcpb, "
+        "and navbe-flows-skill.zip"
+    )
 
 
 if __name__ == "__main__":
