@@ -1,0 +1,58 @@
+{
+  "manifest_version": "0.3",
+  "name": "navbe",
+  "display_name": "Navbe",
+  "version": "0.1.0",
+  "description": "Local-first flow orchestration for Claude via Navbe MCP (stdio).",
+  "long_description": "Discover catalogs, list/create/update flows, validate, and run with human confirmation. Requires a local Navbe checkout and `uv`.",
+  "author": {
+    "name": "Navbe"
+  },
+  "keywords": [
+    "navbe",
+    "mcp",
+    "workflows",
+    "flows",
+    "orchestration",
+    "local"
+  ],
+  "server": {
+    "type": "binary",
+    "entry_point": "run.cmd",
+    "mcp_config": {
+      "command": "${user_config.uv_path}",
+      "args": [
+        "run",
+        "--directory",
+        "${user_config.navbe_directory}",
+        "navbe-mcp"
+      ]
+    }
+  },
+  "tools_generated": true,
+  "prompts_generated": true,
+  "resources_generated": true,
+  "user_config": {
+    "uv_path": {
+      "type": "file",
+      "title": "Path to uv.exe",
+      "description": "Absolute path to the uv executable (e.g. C:\\Users\\YOU\\AppData\\Local\\hermes\\bin\\uv.exe)",
+      "required": true,
+      "default": "C:\\Users\\DELL\\AppData\\Local\\hermes\\bin\\uv.exe"
+    },
+    "navbe_directory": {
+      "type": "directory",
+      "title": "Navbe checkout directory",
+      "description": "Absolute path to your navbe_ai_v0.1 repo",
+      "required": true,
+      "default": "C:/NavbeAI/navbe_ai_v0.1"
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ]
+  }
+}

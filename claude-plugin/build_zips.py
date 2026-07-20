@@ -1,7 +1,13 @@
-"""Rebuild Claude Desktop upload zips with Unix forward-slash paths.
+"""Rebuild Claude Desktop packages with Unix forward-slash zip paths.
 
 Do not use PowerShell Compress-Archive — it embeds backslashes and Claude
 rejects the zip with \"path with invalid characters\".
+
+Produces:
+- navbe.mcpb — Claude Desktop Extension (Settings → Extensions). This is what
+  actually registers MCP tools.
+- navbe-plugin.zip — Claude Code / Customize → Plugins (skill + .mcp.json).
+- navbe-flows-skill.zip — skill-only upload.
 """
 
 from pathlib import Path
@@ -21,7 +27,14 @@ def _write_zip(dest: Path, members: list[tuple[Path, str]]) -> None:
 
 
 def main() -> None:
-    """Build navbe-plugin.zip and navbe-flows-skill.zip."""
+    """Build mcpb + plugin/skill zips."""
+    _write_zip(
+        ROOT / "navbe.mcpb",
+        [
+            (ROOT / "manifest.json", "manifest.json"),
+            (ROOT / "run.cmd", "run.cmd"),
+        ],
+    )
     _write_zip(
         ROOT / "navbe-plugin.zip",
         [
@@ -37,7 +50,7 @@ def main() -> None:
             (ROOT / "skills" / "navbe-flows" / "SKILL.md", "navbe-flows/SKILL.md"),
         ],
     )
-    print("Wrote navbe-plugin.zip and navbe-flows-skill.zip")
+    print("Wrote navbe.mcpb, navbe-plugin.zip, and navbe-flows-skill.zip")
 
 
 if __name__ == "__main__":
