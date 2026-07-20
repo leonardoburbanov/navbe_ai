@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import io
+import sys
+
 import click
 
 from navbe.cli.info import info_cmd
@@ -13,6 +16,16 @@ from navbe.cli.serve import serve_cmd
 from navbe.cli.setup import setup_cmd
 from navbe.cli.steps import steps_group
 from navbe.cli.sync import sync_group
+
+
+def _configure_stdio_utf8() -> None:
+    """Avoid UnicodeEncodeError on Windows cp1252 terminals (ponytail: reconfigure)."""
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+_configure_stdio_utf8()
 
 
 @click.group(invoke_without_command=True)

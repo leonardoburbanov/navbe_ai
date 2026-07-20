@@ -31,13 +31,19 @@ console = Console()
 def _run_uv_sync(dry_run: bool) -> tuple[bool, str]:
     """Run ``uv sync`` when uv is available."""
     if shutil.which("uv") is None:
-        return False, "uv not on PATH — install from https://docs.astral.sh/uv/"
+        return False, "uv not on PATH - install from https://docs.astral.sh/uv/"
     cmd = ["uv", "sync"]
     if dry_run:
         return True, f"would run: {' '.join(cmd)}"
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         err = (proc.stderr or proc.stdout or "").strip()[:500]
+        if "navbe-mcp" in err and ("being used" in err or "utilizado" in err or "error 32" in err):
+            return (
+                False,
+                "navbe-mcp.exe is locked - stop `uv run navbe-mcp` (Ctrl+C), "
+                "then re-run `navbe setup` or use `--skip-sync`",
+            )
         return False, f"uv sync failed: {err}"
     return True, "dependencies synced"
 
@@ -54,7 +60,7 @@ def setup_cmd(dry_run: bool, skip_sync: bool) -> None:
     print_banner()
     console.print(f"[dim]Navbe v{__version__}[/dim]")
     if dry_run:
-        console.print("[yellow]Dry run — no changes will be made.[/yellow]")
+        console.print("[yellow]Dry run - no changes will be made.[/yellow]")
 
     step = 1
 
@@ -62,12 +68,14 @@ def setup_cmd(dry_run: bool, skip_sync: bool) -> None:
     section("Environment", step)
     step += 1
     if python_version_ok():
-        console.print(f" [green]✓[/green] Python {sys.version_info.major}.{sys.version_info.minor}")
+        console.print(
+            f" [green]ok[/green] Python {sys.version_info.major}.{sys.version_info.minor}"
+        )
     else:
-        console.print(" [red]✗[/red] Python 3.12+ required")
+        console.print(" [red]X[/red] Python 3.12+ required")
     repo = find_repo_root()
     if repo:
-        console.print(f" [green]✓[/green] Repo root: {repo}")
+        console.print(f" [green]ok[/green] Repo root: {repo}")
     else:
         console.print(" [yellow]![/yellow] Not inside a navbe checkout (info still works)")
 
@@ -78,10 +86,10 @@ def setup_cmd(dry_run: bool, skip_sync: bool) -> None:
         console.print(" [dim]Skipped (--skip-sync)[/dim]")
     elif dry_run:
         ok, msg = _run_uv_sync(dry_run=True)
-        console.print(f" [cyan]→[/cyan] {msg}")
+        console.print(f" [cyan]->[/cyan] {msg}")
     else:
         ok, msg = _run_uv_sync(dry_run=False)
-        icon = "[green]✓[/green]" if ok else "[yellow]![/yellow]"
+        icon = "[green]ok[/green]" if ok else "[yellow]![/yellow]"
         console.print(f" {icon} {msg}")
 
     # 3. Local data dirs
@@ -90,25 +98,25 @@ def setup_cmd(dry_run: bool, skip_sync: bool) -> None:
     settings = get_settings()
     if dry_run:
         console.print(
-            f" [cyan]→[/cyan] would ensure {settings.flows_dir} "
+            f" [cyan]->[/cyan] would ensure {settings.flows_dir} "
             f"and {settings.db_path.parent}"
         )
     else:
         actions = ensure_data_dirs(settings.flows_dir, settings.db_path)
         if actions:
             for action in actions:
-                console.print(f" [green]✓[/green] {action}")
+                console.print(f" [green]ok[/green] {action}")
         else:
-            console.print(" [green]✓[/green] Data directories present")
+            console.print(" [green]ok[/green] Data directories present")
 
     # 4. Credentials
     section("Credentials", step)
     step += 1
     keys = run_async(get_secrets_service().list_keys()) if not dry_run else []
     if keys:
-        console.print(f" [green]✓[/green] {len(keys)} key(s) in {settings.credentials_path.name}")
+        console.print(f" [green]ok[/green] {len(keys)} key(s) in {settings.credentials_path.name}")
     else:
-        console.print(" [dim]No keys yet — run:[/dim] navbe secret set GITHUB_TOKEN")
+        console.print(" [dim]No keys yet - run:[/dim] navbe secret set GITHUB_TOKEN")
     console.print(" [dim]Recommended keys:[/dim]", ", ".join(RECOMMENDED_KEYS))
 
     # 5. Agent connection

@@ -41,8 +41,8 @@ def print_banner() -> None:
     """Print Navbe welcome banner."""
     console.print(
         Panel(
-            "[bold cyan]Navbe[/bold cyan] — local-first flow orchestration\n"
-            "[dim]Human ops console · agents use navbe-mcp[/dim]",
+            "[bold cyan]Navbe[/bold cyan] - local-first flow orchestration\n"
+            "[dim]Human ops console - agents use navbe-mcp[/dim]",
             border_style="cyan",
         )
     )
@@ -55,7 +55,7 @@ def print_quick_start() -> None:
 
 def section(title: str, number: int) -> None:
     """Print a numbered section header (agents-cli style)."""
-    line = "─" * (len(title) + 3)
+    line = "-" * (len(title) + 3)
     console.print()
     console.print(f" [bold]{number}. {title}[/bold]")
     console.print(f" [dim]{line}[/dim]")
