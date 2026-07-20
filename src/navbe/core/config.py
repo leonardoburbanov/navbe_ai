@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     db_path: Path = Path("./navbe.db")
     flows_dir: Path = Path("./navbe_flows")
+    credentials_path: Path = Path("./navbe_credentials.json")
     log_level: str = "INFO"
     mcp_server_name: str = "navbe"
     anthropic_api_key: str | None = None

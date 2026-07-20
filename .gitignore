@@ -16,6 +16,8 @@ htmlcov/
 .env
 *.db
 navbe_flows/
+navbe_credentials.json
+*.credentials.json
 exports/
 
 # OS / IDE

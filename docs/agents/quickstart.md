@@ -47,6 +47,8 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 8](epics/epic-8.md) — FastAPI wiring status
 - [EPIC 9](epics/epic-9.md) — e2e demo + client connection status
 - [EPIC 10](epics/epic-10.md) — MCP discovery parity
+- [EPIC 11](epics/epic-11.md) — local credentials store (planned)
+- [EPIC 12](epics/epic-12.md) — GitHub sync & branching (planned)
 - [Connect agents](../connect_agents.md) — Claude Desktop plugin/skill + Cursor MCP setup
 - [Claude plugin](../../claude-plugin/) — `navbe-flows` skill + local `navbe-mcp`
 - [Architecture](architecture.md) — layers and domain pattern
