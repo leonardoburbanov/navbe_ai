@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 from rich.table import Table
 
-from navbe import __version__
 from navbe.cli.actions import (
     list_flows,
     list_runs,
@@ -23,7 +22,7 @@ from navbe.cli.actions import (
     watch_runs,
 )
 from navbe.cli.format import console
-from navbe.cli.onboarding import print_banner
+from navbe.cli.onboarding import NAVBE_BLUE, print_main_menu
 from navbe.core.exceptions import NavbeError
 
 
@@ -119,7 +118,9 @@ def _dispatch(line: str) -> None:
     if not text:
         return
     if not text.startswith("/"):
-        console.print("[dim]Commands start with / — try[/dim] [cyan]/help[/cyan]")
+        console.print(
+            f"[dim]Commands start with / — try[/dim] [{NAVBE_BLUE}]/help[/{NAVBE_BLUE}]"
+        )
         return
     try:
         parts = shlex.split(text[1:])
@@ -134,20 +135,14 @@ def _dispatch(line: str) -> None:
         name = "exit"
     cmd = _BY_NAME.get(name)
     if cmd is None:
-        console.print(f"[red]Unknown:[/red] /{name}  — try [cyan]/help[/cyan]")
+        console.print(f"[red]Unknown:[/red] /{name}  — try [{NAVBE_BLUE}]/help[/{NAVBE_BLUE}]")
         return
     cmd.handler(args)
 
 
 def run_session() -> None:
-    """Banner + slash REPL until /exit or Ctrl+D."""
-    print_banner()
-    console.print(f"[dim]Navbe v{__version__} · interactive ops[/dim]")
-    console.print(
-        "[dim]Type[/dim] [cyan]/help[/cyan] [dim]· Ctrl+C cancels watch ·[/dim] "
-        "[cyan]/exit[/cyan] [dim]to quit[/dim]"
-    )
-    console.print()
+    """Welcome dashboard + slash REPL until /exit or Ctrl+D."""
+    print_main_menu()
 
     while True:
         try:

@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
+import getpass
 import json
 import shutil
 import sys
 from pathlib import Path
 
-from rich.console import Console
+from rich.align import Align
+from rich.console import Console, Group
 from rich.panel import Panel
+from rich.rule import Rule
+from rich.table import Table
+from rich.text import Text
+
+from navbe import __version__
 
 console = Console()
+
+# Brand accent (Navbe blue)
+NAVBE_BLUE = "#1e67e8"
 
 DOCS_QUICKSTART = "docs/agents/quickstart.md"
 DOCS_CONNECT = "docs/connect_agents.md"
@@ -36,16 +46,92 @@ QUICK_START = """\
 Agents use [bold]navbe-mcp[/bold]; humans use this CLI. Run [cyan]navbe --help[/cyan] for commands.\
 """
 
+# Small mark for the welcome panel (ASCII-safe for Windows consoles).
+_NAVBE_MARK = f"""\
+[{NAVBE_BLUE}]    .-----.
+   |       |
+   |   N   |
+   |_____|
+     | |[/{NAVBE_BLUE}]"""
+
+
+def _display_name() -> str:
+    """Best-effort local user name for the welcome line."""
+    try:
+        name = getpass.getuser().strip()
+    except Exception:
+        name = ""
+    return name or "there"
+
 
 def print_banner() -> None:
-    """Print Navbe welcome banner."""
+    """Print a compact Navbe banner (setup / non-interactive)."""
     console.print(
         Panel(
-            "[bold cyan]Navbe[/bold cyan] - local-first flow orchestration\n"
+            f"[bold {NAVBE_BLUE}]Navbe[/bold {NAVBE_BLUE}] - local-first flow orchestration\n"
             "[dim]Human ops console - agents use navbe-mcp[/dim]",
-            border_style="cyan",
+            border_style=NAVBE_BLUE,
         )
     )
+
+
+def print_main_menu() -> None:
+    """Print Claude Code–style two-column welcome dashboard (interactive menu)."""
+    name = _display_name()
+    cwd = str(Path.cwd())
+
+    left = Group(
+        Align.center(Text(f"Welcome back {name}!", style="bold white")),
+        Text(""),
+        Align.center(Text.from_markup(_NAVBE_MARK)),
+        Text(""),
+        Align.center(
+            Text(
+                "local-first ops · Typer CLI · MCP for agents",
+                style="dim",
+            )
+        ),
+        Align.center(Text(cwd, style="dim")),
+    )
+
+    tips = Group(
+        Text("Tips for getting started", style=f"bold {NAVBE_BLUE}"),
+        Text(
+            "Run /setup for onboarding, then /flows and /runs to inspect state.",
+            style="white",
+        ),
+        Text("Type /help for the full slash command list.", style="white"),
+    )
+    whats_new = Group(
+        Text("What's new", style=f"bold {NAVBE_BLUE}"),
+        Text("• Interactive slash menu (ops session)", style="white"),
+        Text("• navbe runs list / watch - all flows, live progress", style="white"),
+        Text("• Human CLI on Typer; agents keep using navbe-mcp", style="white"),
+        Text(""),
+        Text("/help for more", style="dim italic"),
+    )
+    right = Group(tips, Rule(style=NAVBE_BLUE), whats_new)
+
+    grid = Table.grid(expand=True, padding=(0, 2))
+    grid.add_column(ratio=1)
+    grid.add_column(ratio=1)
+    grid.add_row(left, right)
+
+    console.print(
+        Panel(
+            grid,
+            title=f"[bold {NAVBE_BLUE}]Navbe v{__version__}[/bold {NAVBE_BLUE}]",
+            title_align="left",
+            border_style=NAVBE_BLUE,
+            padding=(1, 1),
+        )
+    )
+    console.print(
+        f"[dim]Type[/dim] [{NAVBE_BLUE}]/help[/{NAVBE_BLUE}] "
+        "[dim]· Ctrl+C cancels watch ·[/dim] "
+        f"[{NAVBE_BLUE}]/exit[/{NAVBE_BLUE}] [dim]to quit[/dim]"
+    )
+    console.print()
 
 
 def print_quick_start() -> None:
