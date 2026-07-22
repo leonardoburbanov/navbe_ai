@@ -8,6 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from rich import box
 from rich.align import Align
 from rich.console import Console, Group
 from rich.panel import Panel
@@ -17,7 +18,8 @@ from rich.text import Text
 
 from navbe import __version__
 
-console = Console()
+# UTF-8 + modern Windows console so box-drawing / ship glyphs render.
+console = Console(legacy_windows=False, soft_wrap=True)
 
 # Brand accent (Navbe blue)
 NAVBE_BLUE = "#1e67e8"
@@ -46,13 +48,26 @@ QUICK_START = """\
 Agents use [bold]navbe-mcp[/bold]; humans use this CLI. Run [cyan]navbe --help[/cyan] for commands.\
 """
 
-# Small mark for the welcome panel (ASCII-safe for Windows consoles).
-_NAVBE_MARK = f"""\
-[{NAVBE_BLUE}]    .-----.
-   |       |
-   |   N   |
-   |_____|
-     | |[/{NAVBE_BLUE}]"""
+# Compact Navbe spaceship mark (brand blue).
+_SPACESHIP = f"""\
+[{NAVBE_BLUE}]          .
+         /|\\
+        /_|_\\
+       | o o |
+       |__V__|
+      //|||||\\\\
+     *' ^^^ '*[/{NAVBE_BLUE}]"""
+
+
+def _ensure_utf8_stdio() -> None:
+    """Prefer UTF-8 so the welcome ship and box borders render on Windows."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
 
 
 def _display_name() -> str:
@@ -66,70 +81,89 @@ def _display_name() -> str:
 
 def print_banner() -> None:
     """Print a compact Navbe banner (setup / non-interactive)."""
+    _ensure_utf8_stdio()
     console.print(
         Panel(
             f"[bold {NAVBE_BLUE}]Navbe[/bold {NAVBE_BLUE}] - local-first flow orchestration\n"
             "[dim]Human ops console - agents use navbe-mcp[/dim]",
             border_style=NAVBE_BLUE,
+            box=box.ROUNDED,
         )
     )
 
 
 def print_main_menu() -> None:
-    """Print Claude Code–style two-column welcome dashboard (interactive menu)."""
+    """Claude Code-style welcome: title in border, two panes, spaceship mark."""
+    _ensure_utf8_stdio()
     name = _display_name()
     cwd = str(Path.cwd())
 
-    left = Group(
-        Align.center(Text(f"Welcome back {name}!", style="bold white")),
-        Text(""),
-        Align.center(Text.from_markup(_NAVBE_MARK)),
-        Text(""),
-        Align.center(
+    left = Align.center(
+        Group(
+            Text(f"Welcome back {name}!", style="bold white", justify="center"),
+            Text(""),
+            Text.from_markup(_SPACESHIP, justify="center"),
+            Text(""),
             Text(
                 "local-first ops · Typer CLI · MCP for agents",
                 style="dim",
-            )
+                justify="center",
+            ),
+            Text(cwd, style="dim", justify="center"),
         ),
-        Align.center(Text(cwd, style="dim")),
+        vertical="middle",
     )
 
     tips = Group(
         Text("Tips for getting started", style=f"bold {NAVBE_BLUE}"),
         Text(
-            "Run /setup for onboarding, then /flows and /runs to inspect state.",
+            "Run /setup to onboard, then /flows and /runs to explore.",
             style="white",
         ),
-        Text("Type /help for the full slash command list.", style="white"),
     )
     whats_new = Group(
         Text("What's new", style=f"bold {NAVBE_BLUE}"),
-        Text("• Interactive slash menu (ops session)", style="white"),
-        Text("• navbe runs list / watch - all flows, live progress", style="white"),
-        Text("• Human CLI on Typer; agents keep using navbe-mcp", style="white"),
+        Text(
+            "Interactive slash menu with live /watch across all runs",
+            style="white",
+        ),
+        Text(
+            "navbe flows list / runs list without needing IDs first",
+            style="white",
+        ),
+        Text(
+            "Human CLI on Typer; agents keep using navbe-mcp",
+            style="white",
+        ),
         Text(""),
         Text("/help for more", style="dim italic"),
     )
-    right = Group(tips, Rule(style=NAVBE_BLUE), whats_new)
+    right = Group(tips, Text(""), Rule(style=NAVBE_BLUE), Text(""), whats_new)
 
-    grid = Table.grid(expand=True, padding=(0, 2))
-    grid.add_column(ratio=1)
-    grid.add_column(ratio=1)
-    grid.add_row(left, right)
+    # Vertical divider pane split (Claude Code layout).
+    split = Table(
+        expand=True,
+        show_header=False,
+        show_edge=False,
+        box=box.MINIMAL,
+        padding=(1, 2),
+        border_style=NAVBE_BLUE,
+        collapse_padding=True,
+    )
+    split.add_column(ratio=1, justify="center", vertical="middle")
+    split.add_column(ratio=1, justify="left", vertical="middle")
+    split.add_row(left, right)
 
     console.print(
         Panel(
-            grid,
+            split,
             title=f"[bold {NAVBE_BLUE}]Navbe v{__version__}[/bold {NAVBE_BLUE}]",
             title_align="left",
             border_style=NAVBE_BLUE,
-            padding=(1, 1),
+            box=box.ROUNDED,
+            padding=(0, 0),
+            width=min(max(console.width or 88, 72), 92),
         )
-    )
-    console.print(
-        f"[dim]Type[/dim] [{NAVBE_BLUE}]/help[/{NAVBE_BLUE}] "
-        "[dim]· Ctrl+C cancels watch ·[/dim] "
-        f"[{NAVBE_BLUE}]/exit[/{NAVBE_BLUE}] [dim]to quit[/dim]"
     )
     console.print()
 
