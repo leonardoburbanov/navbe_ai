@@ -12,6 +12,7 @@ def test_sync_status_and_push_pull(monkeypatch) -> None:
     """Sync subcommands call SyncService and print human output."""
     fake = FakeSyncService()
     monkeypatch.setattr("navbe.cli.sync.get_sync_service", lambda: fake)
+    monkeypatch.setattr("navbe.cli.actions.get_sync_service", lambda: fake)
     runner = CliRunner()
 
     result = runner.invoke(

@@ -11,8 +11,9 @@ from navbe.cli.main import cli
 from tests.unit.cli.conftest import FakeSecretsService, FakeSyncService
 
 
-def test_navbe_no_args_shows_welcome() -> None:
-    """Running navbe with no subcommand prints quick start."""
+def test_navbe_no_args_shows_welcome(monkeypatch) -> None:
+    """Running navbe with no subcommand on non-TTY prints quick start."""
+    monkeypatch.setattr("navbe.cli.main.should_start_interactive", lambda: False)
     runner = CliRunner()
     result = runner.invoke(cli, [])
     assert result.exit_code == 0

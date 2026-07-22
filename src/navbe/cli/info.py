@@ -11,7 +11,7 @@ import click
 from rich.table import Table
 
 from navbe import __version__
-from navbe.cli.errors import handle_navbe_errors, run_async
+from navbe.cli.errors import handle_navbe_errors
 from navbe.cli.format import console
 from navbe.cli.onboarding import (
     DOCS_CONNECT,

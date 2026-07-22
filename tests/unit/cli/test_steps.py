@@ -12,6 +12,7 @@ def test_steps_list_and_show(monkeypatch) -> None:
     """Steps list/show use CatalogService."""
     fake = FakeCatalogService()
     monkeypatch.setattr("navbe.cli.steps.get_catalog_service", lambda: fake)
+    monkeypatch.setattr("navbe.cli.actions.get_catalog_service", lambda: fake)
     runner = CliRunner()
 
     result = runner.invoke(cli, ["steps"])
@@ -27,6 +28,7 @@ def test_steps_show_unknown(monkeypatch) -> None:
     """Unknown step type exits with error."""
     fake = FakeCatalogService()
     monkeypatch.setattr("navbe.cli.steps.get_catalog_service", lambda: fake)
+    monkeypatch.setattr("navbe.cli.actions.get_catalog_service", lambda: fake)
     runner = CliRunner()
 
     result = runner.invoke(cli, ["steps", "show", "nope"])

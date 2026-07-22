@@ -12,6 +12,7 @@ def test_secret_set_list_has_delete(monkeypatch) -> None:
     """Secret commands never echo values."""
     fake = FakeSecretsService()
     monkeypatch.setattr("navbe.cli.secret.get_secrets_service", lambda: fake)
+    monkeypatch.setattr("navbe.cli.actions.get_secrets_service", lambda: fake)
     runner = CliRunner()
 
     result = runner.invoke(cli, ["secret", "set", "API_KEY"], input="super-secret\n")

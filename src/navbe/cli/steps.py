@@ -5,7 +5,7 @@ from __future__ import annotations
 import click
 
 from navbe.cli.errors import handle_navbe_errors, run_async
-from navbe.cli.format import print_step_schema, print_steps_table
+from navbe.cli.format import print_step_schema
 from navbe.core.exceptions import NotFoundError
 from navbe.dependencies import get_catalog_service
 
