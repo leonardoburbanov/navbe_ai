@@ -6,7 +6,7 @@ import getpass
 import shutil
 import subprocess
 import sys
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 from rich.console import Console
@@ -14,6 +14,7 @@ from rich.panel import Panel
 
 from navbe import __version__
 from navbe.cli.errors import handle_navbe_errors, run_async
+from navbe.cli.mcp_config import ClientName, configure_clients
 from navbe.cli.onboarding import (
     DOCS_CONNECT,
     RECOMMENDED_KEYS,
@@ -167,6 +168,11 @@ def setup_cmd(
         )
     if skip_sync:
         console.print(" [dim]Skipped (--skip-sync)[/dim]")
+    elif repo is None:
+        console.print(
+            " [green]ok[/green] Tool-installed mode "
+            "(no checkout) - skip uv sync"
+        )
     elif dry_run:
         console.print(" [cyan]->[/cyan] would run: uv sync")
     elif confirm(interactive, "Run uv sync now?", default=running == 0):
@@ -224,32 +230,36 @@ def setup_cmd(
     section("Connect your coding agent", step)
     step += 1
     console.print(" Agents use [bold]navbe-mcp[/bold] over stdio (not this CLI).")
-    snippet = mcp_config_snippet(repo) if repo else None
-    if snippet:
-        console.print(
-            Panel(
-                snippet,
-                title="MCP config (Claude Desktop / Cursor)",
-                border_style="cyan",
-            )
+    console.print(
+        Panel(
+            mcp_config_snippet(),
+            title="MCP config (Claude Desktop / Cursor)",
+            border_style="cyan",
         )
-        plugin_zip = repo / "claude-plugin" / "navbe-plugin.zip" if repo else None
-        if plugin_zip and plugin_zip.is_file():
-            console.print(f" [bold]Claude plugin:[/bold] upload {plugin_zip}")
+    )
+    plugin_zip = repo / "claude-plugin" / "navbe-plugin.zip" if repo else None
+    if plugin_zip and plugin_zip.is_file():
+        console.print(f" [bold]Claude plugin:[/bold] upload {plugin_zip}")
+
+    if dry_run:
+        console.print(" [cyan]->[/cyan] would run: navbe mcp configure")
+        for line in configure_clients("all", dry_run=True):
+            console.print(f" [cyan]->[/cyan] {line}")
+    else:
         agent = choice(
             interactive,
-            "Which agent are you connecting?",
-            ["claude", "cursor", "other", "skip"],
+            "Which agent config should Navbe write?",
+            ["cursor", "claude", "all", "skip"],
             default="cursor",
         )
-        if agent == "claude":
-            console.print(" [dim]Claude: Settings -> Connectors or upload navbe-plugin.zip[/dim]")
-        elif agent == "cursor":
-            console.print(" [dim]Cursor: .cursor/mcp.json or Settings -> MCP[/dim]")
-        elif agent != "skip":
-            console.print(f" [dim]See {DOCS_CONNECT}[/dim]")
-    else:
-        console.print(" [dim]Run setup from the navbe repo to print an MCP snippet.[/dim]")
+        if agent != "skip":
+            for line in configure_clients(cast(ClientName, agent)):
+                console.print(f" [green]ok[/green] {line}")
+            console.print(
+                " [dim]Or paste the snippet above / run: navbe mcp configure[/dim]"
+            )
+        else:
+            console.print(" [dim]Skipped - run later: navbe mcp configure[/dim]")
     pause(interactive, "Press Enter for next steps...")
 
     # 7. Finish

@@ -69,6 +69,10 @@ def test_setup_dry_run(monkeypatch) -> None:
     monkeypatch.setattr("navbe.cli.setup.find_repo_root", lambda: Path.cwd())
     monkeypatch.setattr("navbe.cli.setup.get_secrets_service", lambda: FakeSecretsService())
     monkeypatch.setattr("navbe.cli.setup.mcp_process_count", lambda: 0)
+    monkeypatch.setattr(
+        "navbe.cli.setup.configure_clients",
+        lambda *a, **k: ["would write ~/.cursor/mcp.json"],
+    )
     runner = CliRunner()
     result = runner.invoke(cli, ["setup", "--dry-run", "--skip-sync"])
     assert result.exit_code == 0
@@ -82,6 +86,10 @@ def test_setup_yes_non_interactive(monkeypatch) -> None:
     monkeypatch.setattr("navbe.cli.setup.get_secrets_service", lambda: FakeSecretsService())
     monkeypatch.setattr("navbe.cli.setup.mcp_process_count", lambda: 0)
     monkeypatch.setattr("navbe.cli.setup._run_uv_sync", lambda: (True, "synced"))
+    monkeypatch.setattr(
+        "navbe.cli.setup.configure_clients",
+        lambda *a, **k: ["wrote ~/.cursor/mcp.json"],
+    )
     runner = CliRunner()
     result = runner.invoke(cli, ["setup", "--yes", "--skip-sync"])
     assert result.exit_code == 0

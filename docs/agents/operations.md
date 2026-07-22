@@ -17,11 +17,14 @@ API and MCP entrypoints are not wired yet (stubs under `api/` and `mcp_app/`). W
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `NAVBE_DB_PATH` | SQLite control-plane path | `./navbe.db` |
-| `NAVBE_FLOWS_DIR` | Flow definitions directory | `./navbe_flows` |
+| `NAVBE_DB_PATH` | SQLite control-plane path | `<data-home>/navbe.db` |
+| `NAVBE_FLOWS_DIR` | Flow definitions directory | `<data-home>/navbe_flows` |
+| `NAVBE_CREDENTIALS_PATH` | Local credentials JSON | `<data-home>/navbe_credentials.json` |
 | `NAVBE_LOG_LEVEL` | Log level | `INFO` |
 | `NAVBE_MCP_SERVER_NAME` | MCP server name | `navbe` |
 | `NAVBE_ANTHROPIC_API_KEY` | Optional Anthropic key | unset |
+
+`<data-home>` is the repo root when running from a checkout, otherwise `~/.navbe`.
 
 See [`.env.example`](../../.env.example).
 

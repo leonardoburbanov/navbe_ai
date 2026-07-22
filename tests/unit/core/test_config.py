@@ -7,11 +7,25 @@ import pytest
 from navbe.core.config import Settings, get_settings
 
 
-def test_settings_defaults() -> None:
-    """Defaults match the documented Settings fields when env is unset."""
+def test_settings_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Defaults land under the active data home when env/.env are unset."""
+    for key in (
+        "NAVBE_DB_PATH",
+        "NAVBE_FLOWS_DIR",
+        "NAVBE_CREDENTIALS_PATH",
+        "NAVBE_SYNC_CONFIG_PATH",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.chdir(tmp_path)
+    # Outside a checkout, data home is ~/.navbe (not tmp_path).
+    monkeypatch.setattr(
+        "navbe.core.config.default_data_home",
+        lambda: tmp_path / ".navbe",
+    )
     settings = Settings(_env_file=None)
-    assert settings.db_path == Path("./navbe.db")
-    assert settings.credentials_path == Path("./navbe_credentials.json")
+    home = tmp_path / ".navbe"
+    assert settings.db_path == home / "navbe.db"
+    assert settings.credentials_path == home / "navbe_credentials.json"
 
 
 def test_settings_env_override(monkeypatch: pytest.MonkeyPatch) -> None:

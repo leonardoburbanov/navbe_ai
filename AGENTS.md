@@ -76,11 +76,16 @@ Rules:
 ## Commands
 
 ```bash
-# sync / install
+# sync / install (contributors)
 uv sync
+
+# end-user install (no clone) — see docs/connect_agents.md
+# curl -fsSL …/scripts/install.sh | bash
+# irm …/scripts/install.ps1 | iex
 
 # human CLI (secrets, sync, runs, steps)
 uv run navbe setup          # first-run onboarding
+uv run navbe mcp configure  # wire Cursor / Claude Desktop
 uv run navbe --help
 uv run navbe serve
 

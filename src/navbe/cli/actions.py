@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
 from rich.live import Live
 from rich.text import Text
@@ -19,7 +18,7 @@ from navbe.cli.format import (
     print_sync_status,
 )
 from navbe.cli.info import _gather_info, _print_info
-from navbe.cli.onboarding import mcp_config_snippet
+from navbe.cli.mcp_config import mcp_config_snippet
 from navbe.dependencies import (
     get_catalog_service,
     get_flow_service,
@@ -44,11 +43,9 @@ def show_info(*, as_json: bool = False) -> None:
         typer.echo(json.dumps(data, indent=2))
         return
     _print_info(data)
-    repo = data.get("repo_root")
-    if repo:
-        console.print()
-        console.print("[dim]MCP snippet (paste into Claude/Cursor MCP config):[/dim]")
-        console.print(mcp_config_snippet(Path(repo)))
+    console.print()
+    console.print("[dim]MCP snippet (paste into Claude/Cursor MCP config):[/dim]")
+    console.print(mcp_config_snippet())
 
 
 def list_flows() -> None:

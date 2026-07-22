@@ -1,6 +1,6 @@
 # Connect Navbe to Claude Desktop & Cursor AI
 
-Navbe exposes the same MCP server (`uv run navbe-mcp`) over **stdio** for both
+Navbe exposes the same MCP server (`navbe-mcp`) over **stdio** for both
 clients. There is no client-specific server code — only config file location
 differs.
 
@@ -12,13 +12,49 @@ Config paths below were checked against current public docs
 
 ## Shared setup (both clients)
 
-### 1. Install and verify Navbe locally
+### 1. Install Navbe (recommended)
+
+**macOS / Linux / WSL:**
 
 ```bash
-git clone <repo>
-cd navbe_ai_v0.1   # or your local checkout path
+curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.ps1 | iex
+```
+
+After the first GitHub Release (`v*`), the same scripts are also at
+`…/releases/latest/download/install.sh` (and `.ps1`) for website mirroring.
+
+Or with uv directly:
+
+```bash
+uv tool install git+https://github.com/leonardoburbanov/navbe_ai_v0.1.git
+```
+
+Then:
+
+```bash
+navbe --version
+navbe setup
+navbe mcp configure   # writes ~/.cursor/mcp.json (+ Claude Desktop when available)
+navbe-mcp --help      # must exit 0 (does not hang)
+```
+
+Data for tool installs lives under `~/.navbe/` (override with `NAVBE_DB_PATH`, etc.).
+
+Pin a release tag with `NAVBE_REF=v0.1.0` before running the install script.
+
+### 1b. Contributor install (from a git checkout)
+
+```bash
+git clone https://github.com/leonardoburbanov/navbe_ai_v0.1.git
+cd navbe_ai_v0.1
 uv sync
-uv run navbe setup       # onboarding: deps, MCP snippet, next steps
+uv run navbe setup
 uv run navbe-mcp --help
 ```
 
@@ -29,11 +65,11 @@ uv run navbe-mcp --help
 Prefer the human CLI (stores keys in `navbe_credentials.json`, never echoes values):
 
 ```bash
-uv run navbe secret set CRM_API_KEY
-uv run navbe secret list
+navbe secret set CRM_API_KEY
+navbe secret list
 ```
 
-Or use `.env` (legacy):
+From a checkout you can also use `uv run navbe …`. Or use `.env` (legacy):
 
 ```bash
 cp .env.example .env
@@ -45,7 +81,7 @@ sales bot is used as the CRM base URL.
 
 ### 3. Start the fake sales-bot fixture
 
-Keep this running in a separate terminal for the whole demo:
+Keep this running in a separate terminal for the whole demo (checkout only):
 
 ```bash
 uv run python scripts/fake_sales_bot.py

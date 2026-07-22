@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import getpass
-import json
-import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +16,8 @@ from rich.text import Text
 
 from navbe import __version__
 from navbe.cli.errors import run_async
+from navbe.cli.mcp_config import mcp_config_snippet as mcp_config_snippet
+from navbe.core.paths import find_repo_root as find_repo_root
 from navbe.domains.execution.models import RunStatus
 
 # UTF-8 + modern Windows console so box-drawing renders.
@@ -40,10 +40,10 @@ RECOMMENDED_KEYS = (
 QUICK_START = """\
 [bold]Quick start[/bold]
 
-  1. [cyan]navbe setup[/cyan]              Verify install + agent connection hints
-  2. [cyan]navbe secret set GITHUB_TOKEN[/cyan]   Store credentials (hidden prompt)
-  3. [cyan]navbe sync configure --remote-url URL[/cyan]   Optional GitHub flows mirror
-  4. Connect an agent with [cyan]navbe-mcp[/cyan] (see [cyan]navbe setup[/cyan] output)
+  1. [cyan]navbe setup[/cyan]              Verify install + local data dirs
+  2. [cyan]navbe mcp configure[/cyan]       Wire Cursor / Claude Desktop to navbe-mcp
+  3. [cyan]navbe secret set GITHUB_TOKEN[/cyan]   Store credentials (hidden prompt)
+  4. [cyan]navbe sync configure --remote-url URL[/cyan]   Optional GitHub flows mirror
   5. In the agent: call [cyan]navbe_howto[/cyan], then
      [cyan]catalog_steps[/cyan] / [cyan]flow_list[/cyan]
 
@@ -325,32 +325,6 @@ def section(title: str, number: int) -> None:
     console.print()
     console.print(f" [bold]{number}. {title}[/bold]")
     console.print(f" [dim]{line}[/dim]")
-
-
-def find_repo_root(start: Path | None = None) -> Path | None:
-    """Return navbe repo root if ``start`` is inside a checkout."""
-    current = (start or Path.cwd()).resolve()
-    for candidate in (current, *current.parents):
-        if (candidate / "pyproject.toml").is_file() and (candidate / "src" / "navbe").is_dir():
-            try:
-                text = (candidate / "pyproject.toml").read_text(encoding="utf-8")
-            except OSError:
-                continue
-            if 'name = "navbe"' in text:
-                return candidate
-    return None
-
-
-def mcp_config_snippet(repo_root: Path) -> str:
-    """Return a Claude/Cursor MCP JSON snippet for this checkout."""
-    uv = shutil.which("uv") or "uv"
-    snippet = {
-        "navbe": {
-            "command": uv,
-            "args": ["run", "--directory", str(repo_root).replace("\\", "/"), "navbe-mcp"],
-        }
-    }
-    return json.dumps(snippet, indent=2)
 
 
 def python_version_ok() -> bool:
