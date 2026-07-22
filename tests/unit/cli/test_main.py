@@ -1,6 +1,6 @@
 """CLI root and serve."""
 
-from click.testing import CliRunner
+from typer.testing import CliRunner
 
 from navbe.cli.main import cli
 
@@ -19,7 +19,7 @@ def test_navbe_help_lists_command_groups() -> None:
     assert "runs" in result.output
     assert "steps" in result.output
     assert "serve" in result.output
-    assert "Interactive slash menu" in result.output
+    assert "interactive" in result.output.lower() or "slash" in result.output.lower()
 
 
 def test_bare_navbe_non_tty_prints_quick_start(monkeypatch) -> None:

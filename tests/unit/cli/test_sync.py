@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from click.testing import CliRunner
+from typer.testing import CliRunner
 
 from navbe.cli.main import cli
 from tests.unit.cli.conftest import FakeSyncService

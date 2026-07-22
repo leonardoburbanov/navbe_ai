@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-import click
+from typing import Annotated
+
+import typer
 from rich.table import Table
 
 from navbe.cli.errors import handle_navbe_errors, run_async
@@ -20,15 +22,16 @@ async def _auth_status_rows() -> list[tuple[str, bool]]:
     return rows
 
 
-@click.command("login")
-@click.option(
-    "--status",
-    "status_only",
-    is_flag=True,
-    help="Show which recommended keys are present (never values).",
-)
 @handle_navbe_errors
-def login_cmd(status_only: bool) -> None:
+def login_cmd(
+    status_only: Annotated[
+        bool,
+        typer.Option(
+            "--status",
+            help="Show which recommended keys are present (never values).",
+        ),
+    ] = False,
+) -> None:
     """Check or set local credentials (Navbe uses secret keys, not cloud login).
 
     Use ``navbe secret set KEY`` to store values. This command shows readiness.

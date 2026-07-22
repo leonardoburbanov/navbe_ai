@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
-import click
+import typer
 from rich.console import Console
 
 console = Console()
@@ -39,14 +39,18 @@ def confirm(interactive: bool, message: str, *, default: bool = True) -> bool:
     """Ask yes/no when interactive; otherwise return ``default``."""
     if not interactive:
         return default
-    return click.confirm(message, default=default)
+    return typer.confirm(message, default=default)
 
 
 def pause(interactive: bool, message: str = "Press Enter to continue...") -> None:
     """Wait for Enter between setup sections when interactive."""
     if not interactive:
         return
-    click.pause(info=message)
+    typer.echo(message, nl=False)
+    try:
+        input()
+    except EOFError:
+        typer.echo()
 
 
 def choice(
@@ -59,9 +63,11 @@ def choice(
     """Pick one of ``options`` when interactive; otherwise return ``default``."""
     if not interactive:
         return default
-    return click.prompt(
-        message,
-        type=click.Choice(options, case_sensitive=False),
-        default=default,
-        show_choices=True,
-    )
+    opts = "/".join(options)
+    while True:
+        value = typer.prompt(f"{message} [{opts}]", default=default)
+        lowered = value.strip().lower()
+        for option in options:
+            if option.lower() == lowered:
+                return option
+        typer.echo(f"Choose one of: {opts}", err=True)

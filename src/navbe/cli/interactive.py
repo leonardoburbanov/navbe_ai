@@ -7,7 +7,6 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
-import click
 from rich.table import Table
 
 from navbe import __version__
@@ -163,10 +162,6 @@ def run_session() -> None:
             _dispatch(line)
         except SystemExit as exc:
             if exc.code in (0, None):
-                break
-            continue
-        except click.exceptions.Exit as exc:
-            if exc.exit_code in (0, None):
                 break
             continue
         except NavbeError as exc:

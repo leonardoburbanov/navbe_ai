@@ -2,14 +2,25 @@
 
 from __future__ import annotations
 
-import click
+from typing import Annotated
+
+import typer
 
 
-@click.command("serve")
-@click.option("--host", default="127.0.0.1", show_default=True, help="Bind host.")
-@click.option("--port", default=8000, show_default=True, type=int, help="Bind port.")
-@click.option("--reload", is_flag=True, help="Enable auto-reload (dev only).")
-def serve_cmd(host: str, port: int, reload: bool) -> None:
+def serve_cmd(
+    host: Annotated[
+        str,
+        typer.Option("--host", help="Bind host.", show_default=True),
+    ] = "127.0.0.1",
+    port: Annotated[
+        int,
+        typer.Option("--port", help="Bind port.", show_default=True),
+    ] = 8000,
+    reload: Annotated[
+        bool,
+        typer.Option("--reload", help="Enable auto-reload (dev only)."),
+    ] = False,
+) -> None:
     """Run the Navbe HTTP API and mounted MCP server."""
     import uvicorn
 

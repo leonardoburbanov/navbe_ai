@@ -6,8 +6,9 @@ import getpass
 import shutil
 import subprocess
 import sys
+from typing import Annotated
 
-import click
+import typer
 from rich.console import Console
 from rich.panel import Panel
 
@@ -67,11 +68,11 @@ async def _interactive_secrets(interactive: bool) -> None:
             console.print(" [dim]Skip for now - use: navbe secret set KEY[/dim]")
             return
 
-    key = click.prompt(
+    key = choice(
+        interactive,
         "Key name",
-        type=click.Choice(list(RECOMMENDED_KEYS), case_sensitive=True),
+        list(RECOMMENDED_KEYS),
         default="GITHUB_TOKEN",
-        show_choices=True,
     )
     value = getpass.getpass(f"Value for {key} (hidden): ")
     if not value.strip():
@@ -88,9 +89,8 @@ async def _interactive_sync(interactive: bool) -> None:
         return
     if not confirm(interactive, "Configure GitHub flows sync?", default=False):
         return
-    remote = click.prompt(
+    remote = typer.prompt(
         "GitHub remote URL",
-        type=str,
         default="https://github.com/org/navbe-flows.git",
     )
     if not remote.strip():
@@ -107,12 +107,21 @@ async def _interactive_sync(interactive: bool) -> None:
         )
 
 
-@click.command("setup")
-@click.option("--dry-run", is_flag=True, help="Preview steps without making changes.")
-@click.option("--yes", "-y", is_flag=True, help="Non-interactive: accept defaults, no prompts.")
-@click.option("--skip-sync", is_flag=True, help="Skip uv sync step.")
 @handle_navbe_errors
-def setup_cmd(dry_run: bool, yes: bool, skip_sync: bool) -> None:
+def setup_cmd(
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Preview steps without making changes."),
+    ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Non-interactive: accept defaults, no prompts."),
+    ] = False,
+    skip_sync: Annotated[
+        bool,
+        typer.Option("--skip-sync", help="Skip uv sync step."),
+    ] = False,
+) -> None:
     """Interactive onboarding: deps, credentials, sync, agent connection.
 
     Walks through each step with prompts. Use ``--yes`` for scripts/CI.

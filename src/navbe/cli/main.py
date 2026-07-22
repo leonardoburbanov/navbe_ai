@@ -1,24 +1,90 @@
-"""Navbe human CLI — secrets, sync, runs, steps."""
+"""Navbe human CLI — secrets, sync, runs, steps (Typer)."""
 
 from __future__ import annotations
 
 import io
 import sys
+from typing import Annotated
 
-import click
+import typer
 from rich.console import Console
 
-from navbe.cli.flows import flows_group
+from navbe import __version__
+from navbe.cli import flows, runs, secret, steps, sync
 from navbe.cli.info import info_cmd
 from navbe.cli.interactive import run_session, should_start_interactive
 from navbe.cli.login import login_cmd
 from navbe.cli.onboarding import print_banner, print_quick_start
-from navbe.cli.runs import runs_group
-from navbe.cli.secret import secret_group
 from navbe.cli.serve import serve_cmd
 from navbe.cli.setup import setup_cmd
-from navbe.cli.steps import steps_group
-from navbe.cli.sync import sync_group
+
+app = typer.Typer(
+    name="navbe",
+    help=(
+        "Navbe ops console — manage auth, sync flows, watch runs, browse steps. "
+        "Bare navbe opens the interactive slash menu on a TTY."
+    ),
+    no_args_is_help=False,
+    rich_markup_mode="rich",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
+# Subcommand groups
+app.add_typer(secret.app, name="secret")
+app.add_typer(sync.app, name="sync")
+app.add_typer(flows.app, name="flows")
+app.add_typer(runs.app, name="runs")
+app.add_typer(steps.app, name="steps")
+
+# Top-level commands
+app.command("setup")(setup_cmd)
+app.command("info")(info_cmd)
+app.command("login")(login_cmd)
+app.command("serve")(serve_cmd)
+
+# Alias for tests that historically imported ``cli``
+cli = app
+
+
+def _version_callback(value: bool) -> None:
+    """Print version and exit when ``--version`` is passed."""
+    if value:
+        typer.echo(f"navbe {__version__}")
+        raise typer.Exit()
+
+
+@app.callback(invoke_without_command=True)
+def _root(
+    ctx: typer.Context,
+    version: Annotated[
+        bool | None,
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show version and exit.",
+        ),
+    ] = None,
+) -> None:
+    """Agents use ``navbe-mcp``; humans use this CLI.
+
+    Bare ``navbe`` opens the interactive slash menu on a TTY.
+    """
+    if ctx.invoked_subcommand is not None:
+        return
+    if should_start_interactive():
+        run_session()
+        return
+    print_banner()
+    console = Console()
+    console.print(
+        "[dim]New here? Run [bold cyan]navbe setup[/bold cyan] "
+        "for an interactive walkthrough.[/dim]"
+    )
+    console.print()
+    print_quick_start()
+    typer.echo()
+    typer.echo("Run navbe setup to begin, or navbe --help for all commands.")
 
 
 def _configure_stdio_utf8() -> None:
@@ -28,61 +94,10 @@ def _configure_stdio_utf8() -> None:
             stream.reconfigure(encoding="utf-8", errors="replace")
 
 
-_configure_stdio_utf8()
-
-
-@click.group(invoke_without_command=True)
-@click.pass_context
-@click.version_option(package_name="navbe", prog_name="navbe")
-def cli(ctx: click.Context) -> None:
-    """Navbe ops console — manage auth, sync flows, watch runs, browse steps.
-
-    Agents use ``navbe-mcp``; humans use this CLI.
-
-    \b
-    Quick start:
-      navbe                  Interactive slash menu (TTY)
-      navbe setup            Interactive onboarding (prompts; use --yes to skip)
-      navbe info             Paths, credentials readiness, sync state
-      navbe login --status   Which API keys are present (never values)
-      navbe secret set KEY   Store a credential (hidden prompt)
-      navbe sync pull        Import flows/<id>/flow.json from GitHub
-      navbe flows list       All persisted flows
-      navbe runs list        All runs (optional FLOW_ID filter)
-      navbe runs watch       Live all runs (or watch RUN_ID)
-      navbe steps            Available step types
-      navbe serve            HTTP API + MCP mount
-    """
-    if ctx.invoked_subcommand is None:
-        if should_start_interactive():
-            run_session()
-            return
-        print_banner()
-        console = Console()
-        console.print(
-            "[dim]New here? Run [bold cyan]navbe setup[/bold cyan] "
-            "for an interactive walkthrough.[/dim]"
-        )
-        console.print()
-        print_quick_start()
-        click.echo()
-        click.echo("Run navbe setup to begin, or navbe --help for all commands.")
-
-
-cli.add_command(setup_cmd)
-cli.add_command(info_cmd)
-cli.add_command(login_cmd)
-cli.add_command(secret_group)
-cli.add_command(sync_group)
-cli.add_command(flows_group)
-cli.add_command(runs_group)
-cli.add_command(steps_group)
-cli.add_command(serve_cmd)
-
-
 def main() -> None:
     """Console script entrypoint."""
-    cli()
+    _configure_stdio_utf8()
+    app()
 
 
 if __name__ == "__main__":

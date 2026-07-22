@@ -5,9 +5,9 @@ from __future__ import annotations
 import platform
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-import click
+import typer
 from rich.table import Table
 
 from navbe import __version__
@@ -114,10 +114,13 @@ def _print_info(data: dict[str, Any]) -> None:
     console.print(f"[dim]Docs[/dim] {DOCS_CONNECT}")
 
 
-@click.command("info")
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @handle_navbe_errors
-def info_cmd(as_json: bool) -> None:
+def info_cmd(
+    as_json: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON."),
+    ] = False,
+) -> None:
     """Show local paths, credential readiness, sync state, and CLI version."""
     from navbe.cli.actions import show_info
 

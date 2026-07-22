@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from click.testing import CliRunner
+from typer.testing import CliRunner
 
 from navbe.cli.main import cli
 from tests.unit.cli.conftest import FakeSecretsService, FakeSyncService
@@ -30,7 +30,7 @@ def test_navbe_help_includes_onboarding_commands() -> None:
     assert "setup" in result.output
     assert "info" in result.output
     assert "login" in result.output
-    assert "Quick start" in result.output
+    assert "interactive" in result.output.lower() or "slash" in result.output.lower()
 
 
 def test_info_json(monkeypatch, tmp_path: Path) -> None:

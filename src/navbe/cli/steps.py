@@ -2,29 +2,35 @@
 
 from __future__ import annotations
 
-import click
+from typing import Annotated
 
+import typer
+
+from navbe.cli.actions import list_steps
 from navbe.cli.errors import handle_navbe_errors, run_async
 from navbe.cli.format import print_step_schema
 from navbe.core.exceptions import NotFoundError
 from navbe.dependencies import get_catalog_service
 
+app = typer.Typer(
+    help="List available step types (from catalog).",
+    invoke_without_command=True,
+)
 
-@click.group("steps", invoke_without_command=True)
-@click.pass_context
+
+@app.callback(invoke_without_command=True)
 @handle_navbe_errors
-def steps_group(ctx: click.Context) -> None:
-    """List available step types (from catalog)."""
+def steps_root(ctx: typer.Context) -> None:
+    """List available step types when no subcommand is given."""
     if ctx.invoked_subcommand is None:
-        from navbe.cli.actions import list_steps
-
         list_steps()
 
 
-@steps_group.command("show")
-@click.argument("step_type")
+@app.command("show")
 @handle_navbe_errors
-def steps_show(step_type: str) -> None:
+def steps_show(
+    step_type: Annotated[str, typer.Argument(help="Step type name.")],
+) -> None:
     """Show config schema for one step type."""
     catalog = run_async(get_catalog_service().get_steps_catalog())
     entry = catalog.get(step_type)

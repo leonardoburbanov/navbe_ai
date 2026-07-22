@@ -37,11 +37,11 @@ def show_info(*, as_json: bool = False) -> None:
     """Print local paths, credentials readiness, and sync state."""
     import json
 
-    import click
+    import typer
 
     data = run_async(_gather_info())
     if as_json:
-        click.echo(json.dumps(data, indent=2))
+        typer.echo(json.dumps(data, indent=2))
         return
     _print_info(data)
     repo = data.get("repo_root")
@@ -103,14 +103,7 @@ def run_setup(*, yes: bool = False, dry_run: bool = False, skip_sync: bool = Fal
     """Run the interactive setup walkthrough."""
     from navbe.cli.setup import setup_cmd
 
-    args: list[str] = []
-    if yes:
-        args.append("--yes")
-    if dry_run:
-        args.append("--dry-run")
-    if skip_sync:
-        args.append("--skip-sync")
-    setup_cmd.main(args, standalone_mode=False)
+    setup_cmd(dry_run=dry_run, yes=yes, skip_sync=skip_sync)
 
 
 def serve_hint(*, host: str = "127.0.0.1", port: int = 8000) -> None:
