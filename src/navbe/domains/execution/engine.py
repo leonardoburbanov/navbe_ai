@@ -39,8 +39,8 @@ class LangGraphEngine:
         """Expose the run repository for callers that need list helpers."""
         return self._repository
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List runs for a flow, most recent first."""
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        """List runs for a flow (or all runs), most recent first."""
         return await self._repository.list_runs(flow_id)
 
     async def _resolve_connectors_map(self, flow_spec: FlowSpec) -> dict[str, Any]:

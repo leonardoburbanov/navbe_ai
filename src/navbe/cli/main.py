@@ -8,6 +8,7 @@ import sys
 import click
 from rich.console import Console
 
+from navbe.cli.flows import flows_group
 from navbe.cli.info import info_cmd
 from navbe.cli.login import login_cmd
 from navbe.cli.onboarding import print_banner, print_quick_start
@@ -44,6 +45,8 @@ def cli(ctx: click.Context) -> None:
       navbe login --status     Which API keys are present (never values)
       navbe secret set KEY     Store a credential (hidden prompt)
       navbe sync pull          Import flows/<id>/flow.json from GitHub
+      navbe flows list         All persisted flows
+      navbe runs list          All runs (optional FLOW_ID filter)
       navbe runs watch RUN_ID  Live run status until done
       navbe steps              Available step types
       navbe serve              HTTP API + MCP mount
@@ -66,6 +69,7 @@ cli.add_command(info_cmd)
 cli.add_command(login_cmd)
 cli.add_command(secret_group)
 cli.add_command(sync_group)
+cli.add_command(flows_group)
 cli.add_command(runs_group)
 cli.add_command(steps_group)
 cli.add_command(serve_cmd)

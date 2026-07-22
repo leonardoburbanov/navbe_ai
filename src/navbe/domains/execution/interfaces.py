@@ -22,8 +22,8 @@ class ExecutionEngine(Protocol):
         """Resume a paused (HITL) run with a decision payload."""
         ...
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List runs for a flow."""
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        """List runs for a flow, or all runs when ``flow_id`` is None."""
         ...
 
 
@@ -43,6 +43,6 @@ class RunRepository(Protocol):
         """Load run state by id."""
         ...
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List runs belonging to a flow."""
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        """List runs for a flow, or all runs when ``flow_id`` is None."""
         ...

@@ -24,8 +24,11 @@ class FakeRunRepository:
     async def get_state(self, run_id: str) -> RunState:
         return self.states[run_id]
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        runs = [state for state in self.states.values() if state.flow_id == flow_id]
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        if flow_id is None:
+            runs = list(self.states.values())
+        else:
+            runs = [state for state in self.states.values() if state.flow_id == flow_id]
         runs.sort(key=lambda state: state.updated_at, reverse=True)
         return runs
 
@@ -56,8 +59,11 @@ class FakeExecutionEngine:
     async def resume(self, run_id: str, decision: dict) -> RunState:
         return self.states[run_id]
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        runs = [state for state in self.states.values() if state.flow_id == flow_id]
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        if flow_id is None:
+            runs = list(self.states.values())
+        else:
+            runs = [state for state in self.states.values() if state.flow_id == flow_id]
         runs.sort(key=lambda state: state.updated_at, reverse=True)
         return runs
 

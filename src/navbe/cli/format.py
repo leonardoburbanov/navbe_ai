@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from navbe.domains.execution.models import RunState, RunStatus
+from navbe.domains.flows.models import FlowMetadata
 from navbe.domains.sync.models import SyncResult, SyncStatus
 
 console = Console()
@@ -42,10 +43,31 @@ def print_run_state(state: RunState) -> None:
     console.print(f"[bold]updated[/bold] {_fmt_dt(state.updated_at)}")
 
 
+def print_flows_table(flows: list[FlowMetadata]) -> None:
+    """Print persisted flows as a table."""
+    table = Table(title="Flows")
+    table.add_column("flow_id", overflow="fold")
+    table.add_column("name", overflow="fold")
+    table.add_column("version")
+    table.add_column("updated_at")
+    for flow in flows:
+        table.add_row(
+            flow.flow_id,
+            flow.name,
+            str(flow.version),
+            _fmt_dt(flow.updated_at),
+        )
+    if not flows:
+        console.print("[dim]No flows found.[/dim]")
+    else:
+        console.print(table)
+
+
 def print_runs_table(runs: list[RunState]) -> None:
     """Print run history as a table."""
     table = Table(title="Run history")
     table.add_column("run_id", overflow="fold")
+    table.add_column("flow_id", overflow="fold")
     table.add_column("status")
     table.add_column("current_node")
     table.add_column("updated_at")
@@ -54,6 +76,7 @@ def print_runs_table(runs: list[RunState]) -> None:
         style = _STATUS_STYLE.get(run.status, "")
         table.add_row(
             run.run_id,
+            run.flow_id,
             f"[{style}]{run.status}[/{style}]",
             run.current_node or "-",
             _fmt_dt(run.updated_at),

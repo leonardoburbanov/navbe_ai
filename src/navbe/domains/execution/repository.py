@@ -128,8 +128,17 @@ class FileSystemRunRepository:
         async with aiofiles.open(path, encoding="utf-8") as handle:
             return RunState.model_validate_json(await handle.read())
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List all runs under a flow's runs directory, most recent first."""
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        """List runs for a flow, or all indexed runs when ``flow_id`` is None.
+
+        Most recent first by ``updated_at``. Missing state files are skipped.
+        """
+        if flow_id is None:
+            return await self._list_all_runs()
+        return await self._list_runs_for_flow(flow_id)
+
+    async def _list_runs_for_flow(self, flow_id: str) -> list[RunState]:
+        """List runs under one flow's runs directory."""
         root = self._runs_dir_for(flow_id)
         if not root.exists():
             return []
@@ -139,5 +148,23 @@ class FileSystemRunRepository:
             if child.is_dir() and state_path.exists():
                 async with aiofiles.open(state_path, encoding="utf-8") as handle:
                     states.append(RunState.model_validate_json(await handle.read()))
+        states.sort(key=lambda state: state.updated_at, reverse=True)
+        return states
+
+    async def _list_all_runs(self) -> list[RunState]:
+        """List every run known to ``__run_index__``."""
+        if not self._index_dir.exists():
+            return []
+        states: list[RunState] = []
+        for index_path in sorted(self._index_dir.glob("*.json")):
+            async with aiofiles.open(index_path, encoding="utf-8") as handle:
+                payload = json.loads(await handle.read())
+            run_id = str(payload["run_id"])
+            indexed_flow_id = str(payload["flow_id"])
+            state_path = self._run_dir(indexed_flow_id, run_id) / "state.json"
+            if not state_path.exists():
+                continue
+            async with aiofiles.open(state_path, encoding="utf-8") as handle:
+                states.append(RunState.model_validate_json(await handle.read()))
         states.sort(key=lambda state: state.updated_at, reverse=True)
         return states

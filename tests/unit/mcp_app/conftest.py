@@ -162,8 +162,11 @@ class FakeRunService:
         state.updated_at = datetime.now(UTC)
         return state
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        runs = list(self.runs_by_flow.get(flow_id, []))
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        if flow_id is None:
+            runs = [state for states in self.runs_by_flow.values() for state in states]
+        else:
+            runs = list(self.runs_by_flow.get(flow_id, []))
         runs.sort(key=lambda state: state.updated_at, reverse=True)
         return runs
 

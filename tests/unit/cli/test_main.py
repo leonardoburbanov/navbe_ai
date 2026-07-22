@@ -15,6 +15,7 @@ def test_navbe_help_lists_command_groups() -> None:
     assert "login" in result.output
     assert "secret" in result.output
     assert "sync" in result.output
+    assert "flows" in result.output
     assert "runs" in result.output
     assert "steps" in result.output
     assert "serve" in result.output

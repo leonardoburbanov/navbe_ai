@@ -108,8 +108,11 @@ class FakeRunService:
             return completed
         return state
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        return [r for r in self._runs.values() if r.flow_id == flow_id]
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        runs = list(self._runs.values())
+        if flow_id is not None:
+            runs = [r for r in runs if r.flow_id == flow_id]
+        return runs
 
 
 class FakeCatalogService:

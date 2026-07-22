@@ -27,10 +27,10 @@ def runs_group() -> None:
 
 
 @runs_group.command("list")
-@click.argument("flow_id")
+@click.argument("flow_id", required=False, default=None)
 @handle_navbe_errors
-def runs_list(flow_id: str) -> None:
-    """List runs for a flow (most recent first)."""
+def runs_list(flow_id: str | None) -> None:
+    """List all runs, or only those for FLOW_ID (most recent first)."""
     runs = run_async(get_run_service().list_runs(flow_id))
     print_runs_table(runs)
 

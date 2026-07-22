@@ -76,6 +76,6 @@ class RunService:
         """Resume a paused run."""
         return await self._engine.resume(run_id, decision)
 
-    async def list_runs(self, flow_id: str) -> list[RunState]:
-        """List runs for a flow, most recent first (by updated_at)."""
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        """List runs for a flow (or all runs), most recent first (by updated_at)."""
         return await self._engine.list_runs(flow_id)
