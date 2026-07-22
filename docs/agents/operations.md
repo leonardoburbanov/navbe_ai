@@ -1,6 +1,20 @@
 # Operations
 
-## Local commands
+## Install (operators)
+
+End-user and contributor install, CLI surface, and release assets:
+**[../install.md](../install.md)**.
+
+```bash
+# end-user
+curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
+# Windows: irm …/scripts/install.ps1 | iex
+
+navbe setup
+navbe mcp configure
+```
+
+## Local commands (contributors)
 
 ```bash
 uv sync
@@ -9,9 +23,12 @@ uv run ty check src/
 uv run lint-imports
 uv run pytest
 uv run pytest tests/unit/core/test_config.py -v
+uv run navbe --help
+uv run navbe-mcp --help
 ```
 
-API and MCP entrypoints are not wired yet (stubs under `api/` and `mcp_app/`). When they exist, prefer the commands documented in [AGENTS.md](../../AGENTS.md).
+Prefer the commands documented in [AGENTS.md](../../AGENTS.md) and
+[../install.md](../install.md).
 
 ## Environment
 
@@ -20,6 +37,7 @@ API and MCP entrypoints are not wired yet (stubs under `api/` and `mcp_app/`). W
 | `NAVBE_DB_PATH` | SQLite control-plane path | `<data-home>/navbe.db` |
 | `NAVBE_FLOWS_DIR` | Flow definitions directory | `<data-home>/navbe_flows` |
 | `NAVBE_CREDENTIALS_PATH` | Local credentials JSON | `<data-home>/navbe_credentials.json` |
+| `NAVBE_SYNC_CONFIG_PATH` | GitHub sync config JSON | `<data-home>/navbe_sync.json` |
 | `NAVBE_LOG_LEVEL` | Log level | `INFO` |
 | `NAVBE_MCP_SERVER_NAME` | MCP server name | `navbe` |
 | `NAVBE_ANTHROPIC_API_KEY` | Optional Anthropic key | unset |
@@ -37,5 +55,12 @@ See [`.env.example`](../../.env.example).
 3. `uv run ty check src/`
 4. `uv run lint-imports`
 5. `uv run pytest --cov-fail-under=0`
+
+## Releases
+
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml) on tag `v*`:
+
+1. `uv build`
+2. Upload wheel, sdist, `install.sh`, `install.ps1` to the GitHub Release
 
 No automated wiki generation job — agent docs under `docs/agents/` are hand-maintained.

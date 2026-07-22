@@ -6,7 +6,15 @@ Start here for project context. Coding rules live in [AGENTS.md](../../AGENTS.md
 
 Local-first workflow orchestration for AI agents (MCP). Control-plane state in SQLite; analytics destinations (DuckDB/CSV) come in later EPICs.
 
-## Bootstrap (EPIC 0)
+## Install
+
+| Audience | Path |
+| --- | --- |
+| End users (CLI + MCP on PATH) | [../install.md](../install.md) |
+| Contributors (this repo) | `uv sync` below |
+| Wire Cursor / Claude | [../connect_agents.md](../connect_agents.md) |
+
+## Bootstrap (EPIC 0 — contributors)
 
 ```bash
 uv sync
@@ -23,18 +31,22 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 
 | Path | Role today |
 | --- | --- |
-| `src/navbe/core/` | Config, async DB engine/session, base exceptions |
+| `src/navbe/core/` | Config, paths (`~/.navbe` vs checkout), async DB, exceptions |
+| `src/navbe/cli/` | Human ops console (`navbe`, including `mcp configure`) |
 | `src/navbe/domains/steps/` | Standalone step contracts, registry, service, implementations |
 | `src/navbe/domains/connectors/` | Standalone connector contracts, registry, service, HTTP implementation |
 | `src/navbe/domains/secrets/` | Env-backed secret refs for connector configs |
-| `src/navbe/domains/flows/` | FlowSpec models, graph validation, file/SQLite persistence |
+| `src/navbe/domains/flows/` | FlowSpec models, graph validation, filesystem + SQLite persistence |
 | `src/navbe/domains/` | Other domains arrive in later EPICs |
-| `src/navbe/api/` | FastAPI surface (stub) |
-| `src/navbe/mcp_app/` | FastMCP surface (stub) |
+| `src/navbe/api/` | FastAPI surface |
+| `src/navbe/mcp_app/` | FastMCP tools / resources |
+| `src/navbe/mcp_stdio.py` | Stdio MCP entry (`navbe-mcp`) |
+| `scripts/install.sh` / `install.ps1` | End-user installers |
 | `tests/` | Unit + integration; shared fixtures in `conftest.py` |
 
 ## Next reads
 
+- [Install & distribution](../install.md) — one-liner CLI/MCP install, data home, releases
 - [Delivery](delivery.md) — EPIC process and DoD rules
 - [EPIC 0](epics/epic-0.md) — bootstrap status
 - [EPIC 1](epics/epic-1.md) — steps domain status
@@ -49,8 +61,8 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 10](epics/epic-10.md) — MCP discovery parity
 - [EPIC 11](epics/epic-11.md) — local credentials store
 - [EPIC 12](epics/epic-12.md) — GitHub sync (`flows/<id>/flow.json` only)
-- [EPIC 13](epics/epic-13.md) — human CLI (`navbe secret|sync|runs|steps|serve`)
+- [EPIC 13](epics/epic-13.md) — human CLI (`navbe` ops console + `mcp configure`)
 - [Connect agents](../connect_agents.md) — Claude Desktop plugin/skill + Cursor MCP setup
 - [Claude plugin](../../claude-plugin/) — `navbe-flows` skill + local `navbe-mcp`
 - [Architecture](architecture.md) — layers and domain pattern
-- [Operations](operations.md) — commands and CI
+- [Operations](operations.md) — commands, env, CI, releases

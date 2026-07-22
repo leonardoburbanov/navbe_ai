@@ -4,6 +4,9 @@ Navbe exposes the same MCP server (`navbe-mcp`) over **stdio** for both
 clients. There is no client-specific server code — only config file location
 differs.
 
+**Install Navbe first:** [install.md](install.md) (one-liner CLI / MCP install).
+This page covers wiring agents after `navbe` is on your machine.
+
 Config paths below were checked against current public docs
 ([MCP local servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers),
 [Cursor MCP](https://cursor.com/docs/mcp)) as of this write-up.
@@ -12,53 +15,27 @@ Config paths below were checked against current public docs
 
 ## Shared setup (both clients)
 
-### 1. Install Navbe (recommended)
+### 1. Install Navbe
 
-**macOS / Linux / WSL:**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
-```
-
-**Windows (PowerShell):**
-
-```powershell
-irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.ps1 | iex
-```
-
-After the first GitHub Release (`v*`), the same scripts are also at
-`…/releases/latest/download/install.sh` (and `.ps1`) for website mirroring.
-
-Or with uv directly:
+See **[install.md](install.md)** for end-user one-liners and contributor
+`uv sync`. Short path:
 
 ```bash
-uv tool install git+https://github.com/leonardoburbanov/navbe_ai_v0.1.git
-```
-
-Then:
-
-```bash
+# end-user (after install.sh / install.ps1 / uv tool install)
 navbe --version
 navbe setup
-navbe mcp configure   # writes ~/.cursor/mcp.json (+ Claude Desktop when available)
+navbe mcp configure
 navbe-mcp --help      # must exit 0 (does not hang)
 ```
 
-Data for tool installs lives under `~/.navbe/` (override with `NAVBE_DB_PATH`, etc.).
-
-Pin a release tag with `NAVBE_REF=v0.1.0` before running the install script.
-
-### 1b. Contributor install (from a git checkout)
-
 ```bash
-git clone https://github.com/leonardoburbanov/navbe_ai_v0.1.git
-cd navbe_ai_v0.1
+# contributor checkout
 uv sync
 uv run navbe setup
-uv run navbe-mcp --help
+uv run navbe mcp configure
 ```
 
-`--help` should print usage and exit 0 (it must not start a hanging stdio server).
+`--help` on `navbe-mcp` should print usage and exit 0 (it must not start a hanging stdio server).
 
 ### 2. Set required secrets
 
@@ -273,27 +250,30 @@ setting before assuming a Navbe bug.
 
 ## 6B. Human CLI (not for agents)
 
-Humans operate Navbe from the terminal without MCP:
+Humans operate Navbe from the terminal without MCP. Full install + command
+reference: [install.md](install.md).
 
 ```bash
-uv run navbe setup          # start here (like agents-cli setup)
-uv run navbe info           # paths + readiness
-uv run navbe login --status # which keys are set (no values)
-uv run navbe secret set GITHUB_TOKEN
-uv run navbe sync status
-uv run navbe runs watch <RUN_ID>
-uv run navbe steps
-uv run navbe serve
+navbe setup                 # first-run onboarding
+navbe mcp configure         # wire Cursor / Claude Desktop
+navbe info                  # paths + readiness
+navbe login --status        # which keys are set (no values)
+navbe secret set GITHUB_TOKEN
+navbe sync status
+navbe runs watch <RUN_ID>
+navbe steps
+navbe serve
 ```
 
+From a checkout, prefix with `uv run` (e.g. `uv run navbe setup`).
 Agents should keep using `navbe-mcp`.
 
 ---
 
 ## 7. Inspect results on disk (client-agnostic)
 
-Default paths come from `.env` / settings (`NAVBE_FLOWS_DIR`, usually
-`./navbe_flows`):
+Default paths come from settings (`NAVBE_FLOWS_DIR`): repo root when developing
+from a checkout, otherwise `~/.navbe/` (see [install.md](install.md)).
 
 ```bash
 # after a successful create + run

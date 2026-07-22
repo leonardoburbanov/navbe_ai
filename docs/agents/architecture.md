@@ -139,25 +139,28 @@ Claude packaging: [`claude-plugin/`](../../claude-plugin/) bundles local MCP
 mounts REST under `/api/v1/*` and FastMCP at `/mcp` via `http_app(path="/")`
 with the MCP lifespan (and SQLite `flows_index` create_all on startup).
 
-Stdio clients (Claude Desktop, Cursor) use `uv run navbe-mcp`
-(`navbe.mcp_stdio:main`) — same services, `transport="stdio"`. See
-[../connect_agents.md](../connect_agents.md).
+Stdio clients (Claude Desktop, Cursor) use `navbe-mcp`
+(`navbe.mcp_stdio:main`) — same services, `transport="stdio"`. End-user
+install puts `navbe-mcp` on `PATH`; contributors use `uv run navbe-mcp`.
+See [../install.md](../install.md) and [../connect_agents.md](../connect_agents.md).
 
 ## Human CLI
 
-`uv run navbe` is the ops console for humans (Click + Rich). It calls the same
-domain services as MCP/REST — no HTTP round-trip.
+`navbe` is the ops console for humans (Typer + Rich). It calls the same
+domain services as MCP/REST — no HTTP round-trip. Package: `src/navbe/cli/`.
 
 | Command group | Role |
 | --- | --- |
 | `navbe secret` | Local credentials (values never printed) |
 | `navbe sync` | GitHub `flows/<id>/flow.json` mirror |
-| `navbe runs` | Run history, status, live watch |
-| `navbe steps` | Available step types + schema |
-| `navbe serve` | FastAPI + MCP HTTP (formerly bare `navbe`) |
-| `navbe setup` | First-run onboarding (deps, MCP snippet, plugin path) |
+| `navbe flows` / `navbe runs` / `navbe steps` | Browse flows, runs, step catalog |
+| `navbe serve` | FastAPI + MCP HTTP |
+| `navbe setup` | First-run onboarding (data dirs, secrets, sync, MCP write) |
+| `navbe mcp show` / `configure` | Pasteable snippet / write Cursor & Claude Desktop configs |
 | `navbe info` | Paths, credential/sync readiness, version |
 | `navbe login --status` | Recommended API keys present (never values) |
+
+Distribution (install scripts, `uv tool install`, GitHub Releases): [../install.md](../install.md).
 
 ## Persistence split (target)
 
