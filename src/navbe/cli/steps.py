@@ -16,8 +16,9 @@ from navbe.dependencies import get_catalog_service
 def steps_group(ctx: click.Context) -> None:
     """List available step types (from catalog)."""
     if ctx.invoked_subcommand is None:
-        catalog = run_async(get_catalog_service().get_steps_catalog())
-        print_steps_table(catalog)
+        from navbe.cli.actions import list_steps
+
+        list_steps()
 
 
 @steps_group.command("show")

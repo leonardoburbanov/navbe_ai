@@ -19,6 +19,25 @@ def test_navbe_help_lists_command_groups() -> None:
     assert "runs" in result.output
     assert "steps" in result.output
     assert "serve" in result.output
+    assert "Interactive slash menu" in result.output
+
+
+def test_bare_navbe_non_tty_prints_quick_start(monkeypatch) -> None:
+    """Piped / non-TTY stdin keeps banner + quick start (no REPL hang)."""
+    monkeypatch.setattr("navbe.cli.main.should_start_interactive", lambda: False)
+    runner = CliRunner()
+    result = runner.invoke(cli, [])
+    assert result.exit_code == 0
+    assert "navbe setup" in result.output.lower() or "Quick start" in result.output
+
+
+def test_bare_navbe_tty_runs_slash_session(monkeypatch) -> None:
+    """TTY stdin enters interactive session; /help then /exit."""
+    monkeypatch.setattr("navbe.cli.main.should_start_interactive", lambda: True)
+    runner = CliRunner()
+    result = runner.invoke(cli, [], input="/help\n/exit\n")
+    assert result.exit_code == 0
+    assert "Slash commands" in result.output or "/flows" in result.output
 
 
 def test_serve_help() -> None:

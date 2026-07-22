@@ -34,12 +34,9 @@ def secret_set(key: str) -> None:
 @handle_navbe_errors
 def secret_list() -> None:
     """List credential keys (never values)."""
-    keys = run_async(get_secrets_service().list_keys())
-    if not keys:
-        console.print("[dim]No keys stored.[/dim]")
-        return
-    for name in keys:
-        console.print(name)
+    from navbe.cli.actions import list_secret_keys
+
+    list_secret_keys()
 
 
 @secret_group.command("delete")

@@ -55,8 +55,9 @@ def sync_init() -> None:
 @handle_navbe_errors
 def sync_status_cmd() -> None:
     """Show branch, dirty flag, and flow counts."""
-    status = run_async(get_sync_service().status())
-    print_sync_status(status)
+    from navbe.cli.actions import show_sync
+
+    show_sync()
 
 
 @sync_group.group("branch")

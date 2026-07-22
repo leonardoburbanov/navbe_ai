@@ -10,6 +10,7 @@ from rich.console import Console
 
 from navbe.cli.flows import flows_group
 from navbe.cli.info import info_cmd
+from navbe.cli.interactive import run_session, should_start_interactive
 from navbe.cli.login import login_cmd
 from navbe.cli.onboarding import print_banner, print_quick_start
 from navbe.cli.runs import runs_group
@@ -40,18 +41,22 @@ def cli(ctx: click.Context) -> None:
 
     \b
     Quick start:
-      navbe setup              Interactive onboarding (prompts; use --yes to skip)
-      navbe info               Paths, credentials readiness, sync state
-      navbe login --status     Which API keys are present (never values)
-      navbe secret set KEY     Store a credential (hidden prompt)
-      navbe sync pull          Import flows/<id>/flow.json from GitHub
-      navbe flows list         All persisted flows
-      navbe runs list          All runs (optional FLOW_ID filter)
-      navbe runs watch         Live all runs (or watch RUN_ID)
-      navbe steps              Available step types
-      navbe serve              HTTP API + MCP mount
+      navbe                  Interactive slash menu (TTY)
+      navbe setup            Interactive onboarding (prompts; use --yes to skip)
+      navbe info             Paths, credentials readiness, sync state
+      navbe login --status   Which API keys are present (never values)
+      navbe secret set KEY   Store a credential (hidden prompt)
+      navbe sync pull        Import flows/<id>/flow.json from GitHub
+      navbe flows list       All persisted flows
+      navbe runs list        All runs (optional FLOW_ID filter)
+      navbe runs watch       Live all runs (or watch RUN_ID)
+      navbe steps            Available step types
+      navbe serve            HTTP API + MCP mount
     """
     if ctx.invoked_subcommand is None:
+        if should_start_interactive():
+            run_session()
+            return
         print_banner()
         console = Console()
         console.print(

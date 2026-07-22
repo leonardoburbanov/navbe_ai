@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import platform
 import shutil
 from pathlib import Path
@@ -18,7 +17,6 @@ from navbe.cli.onboarding import (
     DOCS_CONNECT,
     RECOMMENDED_KEYS,
     find_repo_root,
-    mcp_config_snippet,
 )
 from navbe.core.config import get_settings
 from navbe.dependencies import get_secrets_service, get_sync_service
@@ -121,13 +119,6 @@ def _print_info(data: dict[str, Any]) -> None:
 @handle_navbe_errors
 def info_cmd(as_json: bool) -> None:
     """Show local paths, credential readiness, sync state, and CLI version."""
-    data = run_async(_gather_info())
-    if as_json:
-        click.echo(json.dumps(data, indent=2))
-        return
-    _print_info(data)
-    repo = data.get("repo_root")
-    if repo:
-        console.print()
-        console.print("[dim]MCP snippet (paste into Claude/Cursor MCP config):[/dim]")
-        console.print(mcp_config_snippet(Path(repo)))
+    from navbe.cli.actions import show_info
+
+    show_info(as_json=as_json)
