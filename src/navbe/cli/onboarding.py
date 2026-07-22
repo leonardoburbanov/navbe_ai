@@ -6,6 +6,7 @@ import getpass
 import json
 import shutil
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from rich import box
@@ -17,8 +18,10 @@ from rich.table import Table
 from rich.text import Text
 
 from navbe import __version__
+from navbe.cli.errors import run_async
+from navbe.domains.execution.models import RunStatus
 
-# UTF-8 + modern Windows console so box-drawing / ship glyphs render.
+# UTF-8 + modern Windows console so box-drawing renders.
 console = Console(legacy_windows=False, soft_wrap=True)
 
 # Brand accent (Navbe blue)
@@ -48,19 +51,28 @@ QUICK_START = """\
 Agents use [bold]navbe-mcp[/bold]; humans use this CLI. Run [cyan]navbe --help[/cyan] for commands.\
 """
 
-# Compact Navbe spaceship mark (brand blue).
-_SPACESHIP = f"""\
-[{NAVBE_BLUE}]          .
-         /|\\
-        /_|_\\
-       | o o |
-       |__V__|
-      //|||||\\\\
-     *' ^^^ '*[/{NAVBE_BLUE}]"""
+_ACTIVE = {RunStatus.PENDING, RunStatus.RUNNING, RunStatus.PAUSED}
+
+
+@dataclass(frozen=True)
+class _MenuSnapshot:
+    """Live workspace facts for the intelligent welcome panel."""
+
+    flow_count: int
+    run_count: int
+    active_runs: int
+    paused_runs: int
+    failed_recent: int
+    secret_keys: int
+    missing_recommended: tuple[str, ...]
+    sync_configured: bool
+    sync_initialized: bool
+    sync_branch: str | None
+    cwd: str
 
 
 def _ensure_utf8_stdio() -> None:
-    """Prefer UTF-8 so the welcome ship and box borders render on Windows."""
+    """Prefer UTF-8 so box borders render on Windows."""
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if callable(reconfigure):
@@ -79,6 +91,159 @@ def _display_name() -> str:
     return name or "there"
 
 
+async def _load_snapshot() -> _MenuSnapshot:
+    """Load flows/runs/secrets/sync for the welcome panel (best-effort)."""
+    from navbe.dependencies import (
+        get_flow_service,
+        get_run_service,
+        get_secrets_service,
+        get_sync_service,
+    )
+
+    flows = await get_flow_service().list()
+    runs = await get_run_service().list_runs(None)
+    secrets = get_secrets_service()
+    keys = await secrets.list_keys()
+    missing = tuple(k for k in RECOMMENDED_KEYS if not await secrets.has(k))
+    sync = await get_sync_service().status()
+    active = [r for r in runs if r.status in _ACTIVE]
+    paused = [r for r in runs if r.status == RunStatus.PAUSED]
+    recent = runs[:8]
+    failed_recent = sum(1 for r in recent if r.status == RunStatus.FAILED)
+    return _MenuSnapshot(
+        flow_count=len(flows),
+        run_count=len(runs),
+        active_runs=len(active),
+        paused_runs=len(paused),
+        failed_recent=failed_recent,
+        secret_keys=len(keys),
+        missing_recommended=missing,
+        sync_configured=bool(sync.configured),
+        sync_initialized=bool(sync.initialized),
+        sync_branch=sync.branch,
+        cwd=str(Path.cwd()),
+    )
+
+
+def _empty_snapshot() -> _MenuSnapshot:
+    """Fallback when services are unavailable."""
+    return _MenuSnapshot(
+        flow_count=0,
+        run_count=0,
+        active_runs=0,
+        paused_runs=0,
+        failed_recent=0,
+        secret_keys=0,
+        missing_recommended=RECOMMENDED_KEYS,
+        sync_configured=False,
+        sync_initialized=False,
+        sync_branch=None,
+        cwd=str(Path.cwd()),
+    )
+
+
+def _smart_tip(snap: _MenuSnapshot) -> str:
+    """Pick one next action from live workspace state."""
+    if snap.paused_runs:
+        return (
+            f"{snap.paused_runs} run(s) paused on approval — "
+            "/status <run_id> then resume via MCP flow_resume."
+        )
+    if snap.active_runs:
+        return (
+            f"{snap.active_runs} run(s) still active — "
+            "type /watch to follow them live."
+        )
+    if snap.failed_recent:
+        return (
+            f"{snap.failed_recent} recent failure(s) — "
+            "type /runs then /status <run_id> to inspect."
+        )
+    if snap.secret_keys == 0:
+        return "No credentials stored yet — run /setup or: navbe secret set KEY"
+    if (
+        "GITHUB_TOKEN" in snap.missing_recommended
+        and not snap.sync_configured
+    ):
+        return "Optional: store GITHUB_TOKEN then configure /sync for GitHub flows."
+    if snap.flow_count == 0:
+        return (
+            "No flows yet — connect an agent (navbe-mcp) and call flow_create, "
+            "or sync pull if you use GitHub."
+        )
+    if snap.run_count == 0:
+        return (
+            f"{snap.flow_count} flow(s) ready — start a run from your agent "
+            "(flow_run), then /watch here."
+        )
+    if snap.sync_configured and not snap.sync_initialized:
+        return "Sync is configured but not initialized — run: navbe sync init"
+    return (
+        f"{snap.flow_count} flow(s), {snap.run_count} run(s) — "
+        "type /flows or /runs to browse."
+    )
+
+
+def _status_lines(snap: _MenuSnapshot) -> Group:
+    """Left pane: welcome + live readiness (no icon)."""
+    name = _display_name()
+    sync_bit = "off"
+    if snap.sync_configured:
+        branch = snap.sync_branch or "-"
+        sync_bit = f"on ({branch})" if snap.sync_initialized else "configured"
+    active_style = NAVBE_BLUE if snap.active_runs else "dim"
+    fail_style = "red" if snap.failed_recent else "dim"
+    return Group(
+        Text(f"Welcome back {name}!", style="bold white", justify="center"),
+        Text(""),
+        Text(
+            f"flows {snap.flow_count}  ·  runs {snap.run_count}  ·  "
+            f"secrets {snap.secret_keys}",
+            style="white",
+            justify="center",
+        ),
+        Text.from_markup(
+            f"active [{active_style}]{snap.active_runs}[/{active_style}]  ·  "
+            f"failed(recent) [{fail_style}]{snap.failed_recent}[/{fail_style}]  ·  "
+            f"sync {sync_bit}",
+            justify="center",
+        ),
+        Text(""),
+        Text(snap.cwd, style="dim", justify="center"),
+    )
+
+
+def _attention_lines(snap: _MenuSnapshot) -> Group:
+    """Right lower pane: what needs attention right now."""
+    lines: list[Text] = [
+        Text("Needs attention", style=f"bold {NAVBE_BLUE}"),
+    ]
+    notes: list[str] = []
+    if snap.paused_runs:
+        notes.append(f"{snap.paused_runs} paused (HITL) — check /runs")
+    if snap.active_runs:
+        notes.append(f"{snap.active_runs} in progress — /watch")
+    if snap.failed_recent:
+        notes.append(f"{snap.failed_recent} recent failures — /runs")
+    if snap.secret_keys == 0:
+        notes.append("No secrets — /setup")
+    elif snap.missing_recommended:
+        shown = ", ".join(snap.missing_recommended[:2])
+        more = "..." if len(snap.missing_recommended) > 2 else ""
+        notes.append(f"Missing recommended keys: {shown}{more}")
+    if snap.flow_count == 0:
+        notes.append("No flows indexed — create via agent or sync")
+    if snap.sync_configured and not snap.sync_initialized:
+        notes.append("Sync not initialized — navbe sync init")
+    if not notes:
+        notes.append("All clear — /help for commands")
+    for note in notes[:4]:
+        lines.append(Text(note, style="white"))
+    lines.append(Text(""))
+    lines.append(Text("/help for more", style="dim italic"))
+    return Group(*lines)
+
+
 def print_banner() -> None:
     """Print a compact Navbe banner (setup / non-interactive)."""
     _ensure_utf8_stdio()
@@ -93,54 +258,26 @@ def print_banner() -> None:
 
 
 def print_main_menu() -> None:
-    """Claude Code-style welcome: title in border, two panes, spaceship mark."""
+    """Claude Code-style welcome with live workspace intelligence."""
     _ensure_utf8_stdio()
-    name = _display_name()
-    cwd = str(Path.cwd())
+    try:
+        snap = run_async(_load_snapshot())
+    except Exception:
+        snap = _empty_snapshot()
 
-    left = Align.center(
-        Group(
-            Text(f"Welcome back {name}!", style="bold white", justify="center"),
-            Text(""),
-            Text.from_markup(_SPACESHIP, justify="center"),
-            Text(""),
-            Text(
-                "local-first ops · Typer CLI · MCP for agents",
-                style="dim",
-                justify="center",
-            ),
-            Text(cwd, style="dim", justify="center"),
-        ),
-        vertical="middle",
-    )
-
+    left = Align.center(_status_lines(snap), vertical="middle")
     tips = Group(
-        Text("Tips for getting started", style=f"bold {NAVBE_BLUE}"),
-        Text(
-            "Run /setup to onboard, then /flows and /runs to explore.",
-            style="white",
-        ),
+        Text("Suggested next step", style=f"bold {NAVBE_BLUE}"),
+        Text(_smart_tip(snap), style="white"),
     )
-    whats_new = Group(
-        Text("What's new", style=f"bold {NAVBE_BLUE}"),
-        Text(
-            "Interactive slash menu with live /watch across all runs",
-            style="white",
-        ),
-        Text(
-            "navbe flows list / runs list without needing IDs first",
-            style="white",
-        ),
-        Text(
-            "Human CLI on Typer; agents keep using navbe-mcp",
-            style="white",
-        ),
+    right = Group(
+        tips,
         Text(""),
-        Text("/help for more", style="dim italic"),
+        Rule(style=NAVBE_BLUE),
+        Text(""),
+        _attention_lines(snap),
     )
-    right = Group(tips, Text(""), Rule(style=NAVBE_BLUE), Text(""), whats_new)
 
-    # Vertical divider pane split (Claude Code layout).
     split = Table(
         expand=True,
         show_header=False,
