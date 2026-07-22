@@ -38,7 +38,11 @@ def test_bare_navbe_tty_runs_slash_session(monkeypatch) -> None:
     result = runner.invoke(cli, [], input="/help\n/exit\n")
     assert result.exit_code == 0
     assert "Navbe" in result.output or "Welcome" in result.output
-    assert "/help" in result.output or "Slash commands" in result.output or "/flows" in result.output
+    assert (
+        "/help" in result.output
+        or "Slash commands" in result.output
+        or "/flows" in result.output
+    )
 
 
 def test_serve_help() -> None:

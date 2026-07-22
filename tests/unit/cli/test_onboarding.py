@@ -36,7 +36,7 @@ def test_navbe_help_includes_onboarding_commands() -> None:
 def test_info_json(monkeypatch, tmp_path: Path) -> None:
     """info --json returns structured status."""
     fake_secrets = FakeSecretsService()
-    fake_secrets._data["GITHUB_TOKEN"] = "x"  # noqa: SLF001
+    fake_secrets._data["NAVBE_ANTHROPIC_API_KEY"] = "x"  # noqa: SLF001
     fake_sync = FakeSyncService()
     monkeypatch.setattr("navbe.cli.info.get_secrets_service", lambda: fake_secrets)
     monkeypatch.setattr("navbe.cli.info.get_sync_service", lambda: fake_sync)
@@ -97,13 +97,21 @@ def test_setup_yes_non_interactive(monkeypatch) -> None:
 
 
 def test_login_status(monkeypatch) -> None:
-    """login --status lists recommended keys without values."""
+    """login --status lists GitHub OAuth + recommended keys without values."""
+    from tests.unit.cli.conftest import FakeGitHubAuthService
+
     fake = FakeSecretsService()
-    fake._data["GITHUB_TOKEN"] = "secret"  # noqa: SLF001
+    fake._data["NAVBE_ANTHROPIC_API_KEY"] = "sk-secret-value"  # noqa: SLF001
+    auth = FakeGitHubAuthService()
+    auth.logged_in = True
+    auth.login = "octocat"
     monkeypatch.setattr("navbe.cli.login.get_secrets_service", lambda: fake)
+    monkeypatch.setattr("navbe.cli.login.get_github_auth_service", lambda: auth)
     runner = CliRunner()
     result = runner.invoke(cli, ["login", "--status"])
     assert result.exit_code == 0
-    assert "GITHUB_TOKEN" in result.output
+    assert "NAVBE_ANTHROPIC_API_KEY" in result.output
     assert "yes" in result.output
-    assert "secret" not in result.output
+    assert "octocat" in result.output
+    # Stored value must never appear in output.
+    assert "sk-secret-value" not in result.output

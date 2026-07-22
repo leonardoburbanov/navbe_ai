@@ -13,7 +13,7 @@ from navbe import __version__
 from navbe.cli import flows, mcp, runs, secret, steps, sync
 from navbe.cli.info import info_cmd
 from navbe.cli.interactive import run_session, should_start_interactive
-from navbe.cli.login import login_cmd
+from navbe.cli.login import login_app, logout_app
 from navbe.cli.onboarding import print_banner, print_quick_start
 from navbe.cli.serve import serve_cmd
 from navbe.cli.setup import setup_cmd
@@ -36,11 +36,12 @@ app.add_typer(flows.app, name="flows")
 app.add_typer(runs.app, name="runs")
 app.add_typer(steps.app, name="steps")
 app.add_typer(mcp.app, name="mcp")
+app.add_typer(login_app, name="login")
+app.add_typer(logout_app, name="logout")
 
 # Top-level commands
 app.command("setup")(setup_cmd)
 app.command("info")(info_cmd)
-app.command("login")(login_cmd)
 app.command("serve")(serve_cmd)
 
 # Alias for tests that historically imported ``cli``

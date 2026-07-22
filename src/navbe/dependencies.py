@@ -23,6 +23,9 @@ from navbe.domains.flows.service import FlowService
 from navbe.domains.secrets.json_file import ChainedSecretsProvider, JsonFileSecretsProvider
 from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
 from navbe.domains.steps.registry import StepRegistry
+from navbe.domains.sync.assets import FlowsAsset
+from navbe.domains.sync.github_auth import GitHubAuthService
+from navbe.domains.sync.oauth_store import GitHubOAuthStore
 from navbe.domains.sync.service import SyncService
 
 
@@ -79,14 +82,34 @@ def get_flow_service() -> FlowService:
 
 
 @lru_cache
-def get_sync_service() -> SyncService:
-    """Return the flows-only GitHub sync service."""
+def get_github_oauth_store() -> GitHubOAuthStore:
+    """Return the managed GitHub OAuth token store."""
     settings = get_settings()
+    return GitHubOAuthStore(settings.github_oauth_path)
+
+
+@lru_cache
+def get_github_auth_service() -> GitHubAuthService:
+    """Return GitHub Device Flow auth service."""
+    settings = get_settings()
+    return GitHubAuthService(
+        store=get_github_oauth_store(),
+        client_id=settings.github_oauth_client_id,
+    )
+
+
+@lru_cache
+def get_sync_service() -> SyncService:
+    """Return the workspace GitHub sync service (OAuth-backed)."""
+    settings = get_settings()
+    flow_repo = get_flow_repository()
     return SyncService(
         config_path=settings.sync_config_path,
         flows_dir=settings.flows_dir,
-        flow_repository=get_flow_repository(),
-        secrets_service=get_secrets_service(),
+        flow_repository=flow_repo,
+        oauth_store=get_github_oauth_store(),
+        auth_service=get_github_auth_service(),
+        assets=[FlowsAsset(flows_dir=settings.flows_dir, flow_repository=flow_repo)],
     )
 
 
@@ -130,6 +153,8 @@ def clear_dependency_caches() -> None:
     """Clear all provider caches (for test isolation)."""
     get_catalog_service.cache_clear()
     get_sync_service.cache_clear()
+    get_github_auth_service.cache_clear()
+    get_github_oauth_store.cache_clear()
     get_run_service.cache_clear()
     get_flow_service.cache_clear()
     get_flow_repository.cache_clear()

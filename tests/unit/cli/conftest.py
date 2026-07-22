@@ -79,6 +79,67 @@ class FakeSyncService:
     async def pull(self) -> SyncResult:
         return SyncResult(branch=self.branch, commit_sha="def", message="pulled")
 
+    async def connect(
+        self,
+        *,
+        owner: str,
+        name: str,
+        private: bool = True,
+        local_repo_dir: str | None = None,
+        default_branch: str | None = None,
+    ) -> SyncStatus:
+        self.config = SyncConfig(
+            remote_url=f"https://github.com/{owner}/{name}.git",
+            local_repo_dir=local_repo_dir or self.config.local_repo_dir,
+            default_branch=default_branch or self.config.default_branch,
+        )
+        return await self.status()
+
+
+class FakeGitHubAuthService:
+    """GitHub auth fake for CLI login tests."""
+
+    def __init__(self) -> None:
+        self.logged_in = False
+        self.login: str | None = None
+        self.pending = False
+
+    async def status(self):
+        from navbe.domains.sync.github_auth import GitHubAuthStatus
+
+        return GitHubAuthStatus(
+            logged_in=self.logged_in,
+            login=self.login,
+            pending=self.pending,
+        )
+
+    async def begin(self):
+        from navbe.domains.sync.github_auth import DeviceBeginResult
+
+        self.pending = True
+        return DeviceBeginResult(
+            user_code="ABCD-1234",
+            verification_uri="https://github.com/login/device",
+            expires_in=900,
+            interval=5,
+        )
+
+    async def complete(self, *, timeout: float = 300.0):
+        from navbe.domains.sync.github_auth import GitHubAuthStatus
+
+        self.logged_in = True
+        self.login = "octocat"
+        self.pending = False
+        return GitHubAuthStatus(logged_in=True, login="octocat", pending=False)
+
+    async def logout(self):
+        from navbe.domains.sync.github_auth import GitHubAuthStatus
+
+        self.logged_in = False
+        self.login = None
+        self.pending = False
+        return GitHubAuthStatus(logged_in=False, login=None, pending=False)
+
 
 class FakeRunService:
     """Run service fake with mutable status for watch tests."""

@@ -257,8 +257,9 @@ reference: [install.md](install.md).
 navbe setup                 # first-run onboarding
 navbe mcp configure         # wire Cursor / Claude Desktop
 navbe info                  # paths + readiness
-navbe login --status        # which keys are set (no values)
-navbe secret set GITHUB_TOKEN
+navbe login --status        # GitHub OAuth + secret key presence (no values)
+navbe login github          # Device Flow for sync
+navbe sync connect OWNER REPO
 navbe sync status
 navbe runs watch <RUN_ID>
 navbe steps

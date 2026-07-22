@@ -69,5 +69,5 @@ async def test_flow_by_id_missing_raises() -> None:
     flow_service.get_error = NotFoundError("missing", details={"flow_id": "ghost"})
     server = make_server(flow_service=flow_service)
     async with Client(server) as client:
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017 — MCP wraps NotFoundError
             await client.read_resource("navbe://flows/ghost")

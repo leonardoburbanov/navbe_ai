@@ -14,10 +14,11 @@ Claude Desktop often does not surface resources to the model.
 1. Call tool `navbe_howto` (this text) if you are unsure.
 2. Call `catalog_steps` and `catalog_connectors` (or `catalog_full`) before authoring.
 3. Call `flow_list` to see what already exists. Use `flow_get` before editing.
-4. For API keys: prefer `secret_set` (local JSON credentials) over editing `.env`.
+4. For connector API keys: prefer `secret_set` (local JSON credentials) over editing `.env`.
    Use `secret_list` / `secret_has` to check keys — values are never returned.
-5. To share flows via GitHub: `secret_set` → `GITHUB_TOKEN`, then
-   `sync_configure` / `sync_init` / `sync_pull` or `sync_push` (flows only).
+5. To share workspace metadata via GitHub:
+   `auth_github_begin` → show the user the code → `auth_github_complete`, then
+   `sync_connect` (or `sync_configure` + `sync_init`) → `sync_pull` / `sync_push`.
 
 Do **not** invent step_type or connector type strings — only use catalog keys.
 
@@ -87,7 +88,9 @@ Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 | Tool | When |
 | --- | --- |
 | `navbe_howto` | First call / stuck |
-| `secret_set` / `secret_list` / `secret_delete` / `secret_has` | Local credentials (no values) |
+| `secret_*` | Local connector credentials (no values) |
+| `auth_github_begin` / `auth_github_complete` | GitHub Device Flow (sync auth) |
+| `auth_github_status` / `auth_github_logout` | OAuth presence / logout |
 | `catalog_steps` / `catalog_connectors` / `catalog_full` | Before authoring |
 | `flow_list` / `flow_get` | Discover existing flows |
 | `flow_validate` | Cheap check before save |
@@ -96,12 +99,12 @@ Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 | `flow_status` | Poll run |
 | `flow_resume` | Continue after approval |
 | `flow_list_runs` | Run history for one flow |
-| `sync_configure` / `sync_init` / `sync_status` | Bind a GitHub flows repo |
+| `sync_connect` / `sync_configure` / `sync_init` / `sync_status` | Bind a GitHub workspace repo |
 | `sync_branch_create` / `sync_checkout` | Branching |
-| `sync_push` / `sync_pull` | Push/pull **only** `flows/<flow_id>/flow.json` |
+| `sync_push` / `sync_pull` | Push/pull workspace assets (flows today) |
 
-GitHub sync never touches runs, credentials, archives, or Python step source.
-Repo layout on GitHub: `flows/<flow_id>/flow.json`.
+GitHub sync never touches runs, credentials, OAuth tokens, archives, or Python step source.
+Repo layout: `flows/<flow_id>/flow.json` (connectors/destinations/schedules reserved).
 
 ## Optional resources (if your client supports them)
 

@@ -73,7 +73,7 @@ async def _interactive_secrets(interactive: bool) -> None:
         interactive,
         "Key name",
         list(RECOMMENDED_KEYS),
-        default="GITHUB_TOKEN",
+        default="NAVBE_ANTHROPIC_API_KEY",
     )
     value = getpass.getpass(f"Value for {key} (hidden): ")
     if not value.strip():
@@ -84,15 +84,43 @@ async def _interactive_secrets(interactive: bool) -> None:
 
 
 async def _interactive_sync(interactive: bool) -> None:
-    """Optionally configure GitHub flows sync."""
+    """Optionally configure GitHub workspace sync (after Device Flow login)."""
     if not interactive:
-        console.print(" [dim]Skipped - run: navbe sync configure --remote-url URL[/dim]")
+        console.print(
+            " [dim]Skipped - run: navbe login github && "
+            "navbe sync connect OWNER REPO[/dim]"
+        )
         return
-    if not confirm(interactive, "Configure GitHub flows sync?", default=False):
+    if not confirm(interactive, "Configure GitHub workspace sync?", default=False):
+        return
+    if confirm(interactive, "Log in to GitHub now (device flow)?", default=True):
+        from navbe.dependencies import get_github_auth_service
+
+        auth = get_github_auth_service()
+        begin = await auth.begin()
+        console.print(f" Open [cyan]{begin.verification_uri}[/cyan]")
+        console.print(f" Enter code: [bold yellow]{begin.user_code}[/bold yellow]")
+        with console.status("[bold cyan]Waiting for GitHub authorization..."):
+            await auth.complete(timeout=300.0)
+        console.print(" [green]ok[/green] GitHub login stored")
+    if confirm(interactive, "Create or bind a repo with sync connect?", default=True):
+        owner = typer.prompt("GitHub owner (user or org)")
+        name = typer.prompt("Repository name", default="navbe-workspace")
+        private = confirm(interactive, "Private repo?", default=True)
+        with console.status("[bold cyan]Connecting sync repo..."):
+            status = await get_sync_service().connect(
+                owner=owner.strip(),
+                name=name.strip(),
+                private=private,
+            )
+        console.print(
+            f" [green]ok[/green] remote={status.remote_url or '-'} "
+            f"initialized={status.initialized}"
+        )
         return
     remote = typer.prompt(
         "GitHub remote URL",
-        default="https://github.com/org/navbe-flows.git",
+        default="https://github.com/org/navbe-workspace.git",
     )
     if not remote.strip():
         console.print("[yellow]Empty URL - skipped.[/yellow]")

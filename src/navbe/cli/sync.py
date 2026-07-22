@@ -1,4 +1,4 @@
-"""navbe sync — GitHub flows mirror (flows/<id>/flow.json only)."""
+"""navbe sync — GitHub workspace mirror (flows + reserved asset layout)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,11 @@ from navbe.cli.format import print_sync_result, print_sync_status
 from navbe.dependencies import get_sync_service
 
 app = typer.Typer(
-    help="Sync flow organization with GitHub (flow.json only — not runs or credentials)."
+    help=(
+        "Sync versionable workspace metadata with GitHub "
+        "(flows now; connectors/destinations/schedules when registered). "
+        "Auth: navbe login github."
+    )
 )
 branch_app = typer.Typer(help="Branch operations.")
 app.add_typer(branch_app, name="branch")
@@ -31,29 +35,55 @@ def sync_configure(
     ] = None,
     flows_subdir: Annotated[
         str | None,
-        typer.Option("--flows-subdir", help="Subdir inside clone (default: flows)."),
+        typer.Option("--flows-subdir", help="Flows subdir inside clone (default: flows)."),
     ] = None,
     default_branch: Annotated[
         str | None,
         typer.Option("--default-branch", help="Default branch (default: main)."),
     ] = None,
-    token_secret_key: Annotated[
-        str | None,
-        typer.Option("--token-secret-key", help="Credentials key for token."),
-    ] = None,
 ) -> None:
-    """Persist sync settings (token via navbe secret set GITHUB_TOKEN)."""
+    """Persist sync settings (token via navbe login github)."""
     config = run_async(
         get_sync_service().configure(
             remote_url=remote_url,
             local_repo_dir=local_repo_dir,
             flows_subdir=flows_subdir,
             default_branch=default_branch,
-            token_secret_key=token_secret_key,
         )
     )
     typer.echo(f"Saved sync config (remote={config.remote_url or '-'})")
     status = run_async(get_sync_service().status())
+    print_sync_status(status)
+
+
+@app.command("connect")
+@handle_navbe_errors
+def sync_connect(
+    owner: Annotated[str, typer.Argument(help="GitHub user or org.")],
+    name: Annotated[str, typer.Argument(help="Repository name.")],
+    private: Annotated[
+        bool,
+        typer.Option("--private/--public", help="Create as private if missing."),
+    ] = True,
+    local_repo_dir: Annotated[
+        str | None,
+        typer.Option("--local-repo-dir", help="Working clone directory."),
+    ] = None,
+    default_branch: Annotated[
+        str | None,
+        typer.Option("--default-branch", help="Default branch (default: main)."),
+    ] = None,
+) -> None:
+    """Create-or-bind owner/name, configure remote, and init the clone."""
+    status = run_async(
+        get_sync_service().connect(
+            owner=owner,
+            name=name,
+            private=private,
+            local_repo_dir=local_repo_dir,
+            default_branch=default_branch,
+        )
+    )
     print_sync_status(status)
 
 
@@ -68,7 +98,7 @@ def sync_init() -> None:
 @app.command("status")
 @handle_navbe_errors
 def sync_status_cmd() -> None:
-    """Show branch, dirty flag, and flow counts."""
+    """Show branch, dirty flag, and asset counts."""
     show_sync()
 
 
@@ -100,7 +130,7 @@ def sync_push(
         typer.Option("--message", "-m", help="Commit message."),
     ] = None,
 ) -> None:
-    """Push local flows/<id>/flow.json to GitHub."""
+    """Push local workspace assets to GitHub."""
     result = run_async(get_sync_service().push(message))
     print_sync_result(result)
 
@@ -108,6 +138,6 @@ def sync_push(
 @app.command("pull")
 @handle_navbe_errors
 def sync_pull() -> None:
-    """Pull flows from GitHub into local Navbe (ff-only)."""
+    """Pull workspace assets from GitHub into local Navbe (ff-only)."""
     result = run_async(get_sync_service().pull())
     print_sync_result(result)

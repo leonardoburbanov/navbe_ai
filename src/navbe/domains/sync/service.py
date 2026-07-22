@@ -1,47 +1,36 @@
-"""Sync use-cases: GitHub mirror of flow organization only.
+"""Sync use-cases: GitHub mirror of versionable workspace metadata.
 
-Only ``flows/<flow_id>/flow.json`` is copied. Never runs/, archives,
-credentials, or Python step source.
+Push/pull iterates registered ``WorkspaceAsset`` instances. EPIC 14 registers
+flows only (``flows/<flow_id>/flow.json``). Never runs/, archives, credentials,
+OAuth tokens, or Python step source.
+
+Auth: GitHub Device Flow token from ``GitHubOAuthStore`` only.
 """
 
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
 import aiofiles
 
 from navbe.core.exceptions import ConfigurationError, NotFoundError, ValidationError
 from navbe.domains.flows.interfaces import FlowRepository
-from navbe.domains.flows.models import FlowSpec
-from navbe.domains.secrets.service import SecretsService
+from navbe.domains.sync.assets import FlowsAsset, copy_flow_json, list_flow_ids
 from navbe.domains.sync.git_remote import GitSubprocessRemote
-from navbe.domains.sync.interfaces import GitRemote
+from navbe.domains.sync.github_auth import GitHubAuthService
+from navbe.domains.sync.interfaces import GitRemote, WorkspaceAsset
 from navbe.domains.sync.models import SyncConfig, SyncResult, SyncStatus
+from navbe.domains.sync.oauth_store import GitHubOAuthStore
 
-
-def list_flow_ids(flows_root: Path) -> list[str]:
-    """Return flow_ids that have a ``flow.json`` under ``flows_root``."""
-    if not flows_root.exists():
-        return []
-    ids: list[str] = []
-    for child in sorted(flows_root.iterdir()):
-        if child.is_dir() and (child / "flow.json").is_file():
-            ids.append(child.name)
-    return ids
-
-
-def copy_flow_json(src_dir: Path, dest_dir: Path, flow_id: str) -> None:
-    """Copy only ``flow_id/flow.json`` (creates dest dirs)."""
-    src = src_dir / flow_id / "flow.json"
-    dest = dest_dir / flow_id / "flow.json"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dest)
-
+__all__ = [
+    "SyncService",
+    "copy_flow_json",
+    "list_flow_ids",
+]
 
 class SyncService:
-    """Configure and run flows-only GitHub sync."""
+    """Configure and run workspace GitHub sync (OAuth-backed)."""
 
     def __init__(
         self,
@@ -49,15 +38,21 @@ class SyncService:
         config_path: Path,
         flows_dir: Path,
         flow_repository: FlowRepository,
-        secrets_service: SecretsService,
+        oauth_store: GitHubOAuthStore,
+        auth_service: GitHubAuthService | None = None,
+        assets: list[WorkspaceAsset] | None = None,
         git: GitRemote | None = None,
     ) -> None:
-        """Create a sync service bound to local flows and a config file."""
+        """Create a sync service bound to local workspace assets and config."""
         self._config_path = config_path
         self._flows_dir = flows_dir
         self._flows = flow_repository
-        self._secrets = secrets_service
+        self._oauth = oauth_store
+        self._auth = auth_service
         self._git = git or GitSubprocessRemote()
+        self._assets: list[WorkspaceAsset] = assets or [
+            FlowsAsset(flows_dir=flows_dir, flow_repository=flow_repository),
+        ]
 
     async def _load_config(self) -> SyncConfig:
         """Load sync config from disk (empty defaults if missing)."""
@@ -66,6 +61,8 @@ class SyncService:
         async with aiofiles.open(self._config_path, encoding="utf-8") as handle:
             raw = await handle.read()
         data = json.loads(raw) if raw.strip() else {}
+        # Drop deprecated PAT key if present in older configs.
+        data.pop("token_secret_key", None)
         return SyncConfig.model_validate(data)
 
     async def _save_config(self, config: SyncConfig) -> None:
@@ -74,20 +71,17 @@ class SyncService:
         async with aiofiles.open(self._config_path, "w", encoding="utf-8") as handle:
             await handle.write(config.model_dump_json(indent=2) + "\n")
 
-    async def _resolve_token(self, config: SyncConfig) -> str:
-        """Resolve GitHub token from credentials / env."""
-        for key in (config.token_secret_key, "GH_TOKEN", "GITHUB_TOKEN"):
-            try:
-                return await self._secrets.resolve_ref(key)
-            except NotFoundError:
-                continue
-        raise ConfigurationError(
-            "GitHub token not found",
-            details={
-                "hint": "secret_set key=GITHUB_TOKEN (or GH_TOKEN) before sync_init",
-                "key": config.token_secret_key,
-            },
-        )
+    async def _resolve_token(self) -> str:
+        """Resolve GitHub token from the OAuth store only."""
+        try:
+            return await self._oauth.get_token()
+        except NotFoundError as exc:
+            raise ConfigurationError(
+                "GitHub OAuth token not found",
+                details={
+                    "hint": "run navbe login github (or auth_github_begin / auth_github_complete)",
+                },
+            ) from exc
 
     def _git_with_auth(self, token: str) -> GitRemote:
         """Return a git adapter carrying the bearer token in-process only."""
@@ -101,8 +95,12 @@ class SyncService:
         if not config.remote_url.strip():
             raise ValidationError(
                 "sync remote_url is not configured",
-                details={"hint": "call sync_configure with remote_url first"},
+                details={"hint": "call sync_connect or sync_configure with remote_url first"},
             )
+
+    def _asset_paths(self) -> list[str]:
+        """Subdirs to stage on commit."""
+        return [asset.subdir for asset in self._assets]
 
     async def configure(
         self,
@@ -111,7 +109,6 @@ class SyncService:
         local_repo_dir: str | None = None,
         flows_subdir: str | None = None,
         default_branch: str | None = None,
-        token_secret_key: str | None = None,
     ) -> SyncConfig:
         """Update and persist sync settings (no token values)."""
         config = await self._load_config()
@@ -124,40 +121,79 @@ class SyncService:
             data["flows_subdir"] = flows_subdir.strip("/").replace("\\", "/") or "flows"
         if default_branch is not None:
             data["default_branch"] = default_branch
-        if token_secret_key is not None:
-            data["token_secret_key"] = token_secret_key
         updated = SyncConfig.model_validate(data)
         await self._save_config(updated)
         return updated
+
+    async def connect(
+        self,
+        *,
+        owner: str,
+        name: str,
+        private: bool = True,
+        local_repo_dir: str | None = None,
+        default_branch: str | None = None,
+    ) -> SyncStatus:
+        """Create-or-bind ``owner/name``, configure remote, and init the clone."""
+        if self._auth is None:
+            raise ConfigurationError(
+                "GitHub auth service is not configured",
+                details={"hint": "wire GitHubAuthService into SyncService"},
+            )
+        repo_info = await self._auth.ensure_repo(owner=owner, name=name, private=private)
+        clone_url = str(repo_info["clone_url"])
+        await self.configure(
+            remote_url=clone_url,
+            local_repo_dir=local_repo_dir,
+            default_branch=default_branch,
+        )
+        return await self.init()
 
     async def init(self) -> SyncStatus:
         """Clone or bind the remote repository."""
         config = await self._load_config()
         self._require_remote(config)
-        token = await self._resolve_token(config)
+        token = await self._resolve_token()
         git = self._git_with_auth(token)
         await git.ensure_clone(
             config.remote_url,
             config.local_repo_dir,
             config.default_branch,
         )
-        flows_root = Path(config.local_repo_dir) / config.flows_subdir
-        flows_root.mkdir(parents=True, exist_ok=True)
+        clone = Path(config.local_repo_dir)
+        for asset in self._assets:
+            (clone / asset.subdir).mkdir(parents=True, exist_ok=True)
         return await self.status()
 
     async def status(self) -> SyncStatus:
-        """Return sync / branch status and flow counts (local vs clone)."""
+        """Return sync / branch status and per-asset counts (local vs clone)."""
         config = await self._load_config()
-        local_ids = list_flow_ids(self._flows_dir)
-        repo = Path(config.local_repo_dir)
-        initialized = repo.exists() and (repo / ".git").exists()
-        remote_ids = list_flow_ids(repo / config.flows_subdir) if initialized else []
+        clone = Path(config.local_repo_dir)
+        initialized = clone.exists() and (clone / ".git").exists()
+
+        asset_counts: dict[str, dict[str, int]] = {}
+        local_flow_count = 0
+        remote_flow_count = 0
+        for asset in self._assets:
+            local_n = len(asset.list_local_ids())
+            remote_n = len(asset.list_remote_ids(clone)) if initialized else 0
+            asset_counts[asset.subdir] = {"local": local_n, "remote": remote_n}
+            if asset.subdir == "flows" or getattr(asset, "subdir", "") == config.flows_subdir:
+                local_flow_count = local_n
+                remote_flow_count = remote_n
+
+        logged_in = await self._oauth.has_token()
+        login = await self._oauth.get_login()
+
         if not config.remote_url:
             return SyncStatus(
                 configured=False,
                 initialized=False,
-                local_flow_count=len(local_ids),
+                local_flow_count=local_flow_count,
                 remote_flow_count=0,
+                asset_counts=asset_counts,
+                github_logged_in=logged_in,
+                github_login=login,
             )
         if not initialized:
             return SyncStatus(
@@ -166,8 +202,11 @@ class SyncService:
                 remote_url=config.remote_url,
                 flows_subdir=config.flows_subdir,
                 default_branch=config.default_branch,
-                local_flow_count=len(local_ids),
+                local_flow_count=local_flow_count,
                 remote_flow_count=0,
+                asset_counts=asset_counts,
+                github_logged_in=logged_in,
+                github_login=login,
             )
         branch = await self._git.current_branch(config.local_repo_dir)
         dirty = await self._git.is_dirty(config.local_repo_dir)
@@ -179,8 +218,11 @@ class SyncService:
             dirty=dirty,
             flows_subdir=config.flows_subdir,
             default_branch=config.default_branch,
-            local_flow_count=len(local_ids),
-            remote_flow_count=len(remote_ids),
+            local_flow_count=local_flow_count,
+            remote_flow_count=remote_flow_count,
+            asset_counts=asset_counts,
+            github_logged_in=logged_in,
+            github_login=login,
         )
 
     async def branch_create(self, name: str) -> SyncStatus:
@@ -192,7 +234,7 @@ class SyncService:
                 "working tree is dirty; commit or discard before branching",
                 details={"local_repo_dir": config.local_repo_dir},
             )
-        token = await self._resolve_token(config)
+        token = await self._resolve_token()
         git = self._git_with_auth(token)
         await git.create_branch(config.local_repo_dir, name, config.default_branch)
         return await self.status()
@@ -205,50 +247,37 @@ class SyncService:
                 "working tree is dirty; commit or discard before checkout",
                 details={"local_repo_dir": config.local_repo_dir},
             )
-        token = await self._resolve_token(config)
+        token = await self._resolve_token()
         git = self._git_with_auth(token)
         await git.checkout(config.local_repo_dir, branch)
         return await self.status()
 
     async def push(self, message: str | None = None) -> SyncResult:
-        """Copy local flows into clone ``flows/`` and push current branch.
-
-        Only ``flows/<flow_id>/flow.json`` — not runs or archives.
-        """
+        """Export registered assets into the clone and push the current branch."""
         config = await self._load_config()
         self._require_remote(config)
-        token = await self._resolve_token(config)
+        token = await self._resolve_token()
         git = self._git_with_auth(token)
         branch = await git.current_branch(config.local_repo_dir)
+        clone = Path(config.local_repo_dir)
 
-        remote_flows = Path(config.local_repo_dir) / config.flows_subdir
-        remote_flows.mkdir(parents=True, exist_ok=True)
+        assets_delta: dict[str, dict[str, list[str]]] = {}
+        flows_added: list[str] = []
+        flows_updated: list[str] = []
+        flows_removed: list[str] = []
+        for asset in self._assets:
+            change = asset.export_to(clone)
+            assets_delta[asset.subdir] = change.model_dump()
+            if asset.subdir == "flows":
+                flows_added = change.added
+                flows_updated = change.updated
+                flows_removed = change.removed
 
-        local_ids = set(list_flow_ids(self._flows_dir))
-        remote_ids = set(list_flow_ids(remote_flows))
-
-        removed = sorted(remote_ids - local_ids)
-        for flow_id in removed:
-            shutil.rmtree(remote_flows / flow_id, ignore_errors=True)
-
-        added: list[str] = []
-        updated: list[str] = []
-        for flow_id in sorted(local_ids):
-            if flow_id in remote_ids:
-                updated.append(flow_id)
-            else:
-                added.append(flow_id)
-            dest_dir = remote_flows / flow_id
-            if dest_dir.exists():
-                shutil.rmtree(dest_dir)
-            copy_flow_json(self._flows_dir, remote_flows, flow_id)
-
-        commit_msg = message or "navbe: sync flows"
-        # Only stage flows_subdir — never runs/, credentials, or other clone junk.
+        commit_msg = message or "navbe: sync workspace"
         sha = await git.commit_all(
             config.local_repo_dir,
             commit_msg,
-            paths=[config.flows_subdir],
+            paths=self._asset_paths(),
         )
         if sha is not None:
             await git.push(config.local_repo_dir, branch)
@@ -260,14 +289,15 @@ class SyncService:
         return SyncResult(
             branch=branch,
             commit_sha=sha,
-            flows_added=added,
-            flows_updated=updated,
-            flows_removed=removed,
+            flows_added=flows_added,
+            flows_updated=flows_updated,
+            flows_removed=flows_removed,
+            assets=assets_delta,
             message=result_message,
         )
 
     async def pull(self) -> SyncResult:
-        """Fast-forward pull and import only ``flows/<id>/flow.json`` into Navbe."""
+        """Fast-forward pull and import registered assets into Navbe."""
         config = await self._load_config()
         self._require_remote(config)
         if await self._git.is_dirty(config.local_repo_dir):
@@ -275,38 +305,30 @@ class SyncService:
                 "working tree is dirty; cannot pull",
                 details={"local_repo_dir": config.local_repo_dir},
             )
-        token = await self._resolve_token(config)
+        token = await self._resolve_token()
         git = self._git_with_auth(token)
         branch = await git.current_branch(config.local_repo_dir)
         sha = await git.pull_ff_only(config.local_repo_dir, branch)
+        clone = Path(config.local_repo_dir)
 
-        remote_flows = Path(config.local_repo_dir) / config.flows_subdir
-        remote_ids = set(list_flow_ids(remote_flows))
-        local_ids = set(list_flow_ids(self._flows_dir))
-
-        added: list[str] = []
-        updated: list[str] = []
-        for flow_id in sorted(remote_ids):
-            spec_path = remote_flows / flow_id / "flow.json"
-            async with aiofiles.open(spec_path, encoding="utf-8") as handle:
-                raw = await handle.read()
-            flow_spec = FlowSpec.model_validate_json(raw)
-            if flow_id in local_ids:
-                updated.append(flow_id)
-            else:
-                added.append(flow_id)
-            await self._flows.upsert(flow_spec)
-
-        removed = sorted(local_ids - remote_ids)
-        for flow_id in removed:
-            shutil.rmtree(self._flows_dir / flow_id, ignore_errors=True)
-            await self._flows.delete_index(flow_id)
+        assets_delta: dict[str, dict[str, list[str]]] = {}
+        flows_added: list[str] = []
+        flows_updated: list[str] = []
+        flows_removed: list[str] = []
+        for asset in self._assets:
+            change = await asset.import_from(clone)
+            assets_delta[asset.subdir] = change.model_dump()
+            if asset.subdir == "flows":
+                flows_added = change.added
+                flows_updated = change.updated
+                flows_removed = change.removed
 
         return SyncResult(
             branch=branch,
             commit_sha=sha,
-            flows_added=added,
-            flows_updated=updated,
-            flows_removed=removed,
+            flows_added=flows_added,
+            flows_updated=flows_updated,
+            flows_removed=flows_removed,
+            assets=assets_delta,
             message="pulled",
         )

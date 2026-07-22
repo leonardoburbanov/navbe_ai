@@ -106,6 +106,10 @@ def print_sync_status(status: SyncStatus) -> None:
     table.add_row("flows_subdir", status.flows_subdir)
     table.add_row("local_flows", str(status.local_flow_count))
     table.add_row("remote_flows", str(status.remote_flow_count))
+    table.add_row("github_logged_in", str(status.github_logged_in))
+    table.add_row("github_login", status.github_login or "-")
+    if status.asset_counts:
+        table.add_row("assets", ", ".join(sorted(status.asset_counts)))
     console.print(table)
 
 

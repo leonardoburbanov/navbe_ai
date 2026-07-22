@@ -77,13 +77,22 @@ Missing keys raise `NotFoundError` with the key name and a hint — never a secr
 
 ## Sync domain
 
-`SyncService` mirrors **only** flow organization to GitHub:
-`flows/<flow_id>/flow.json` under a working clone (`navbe_sync_repo/`).
-Never syncs runs, credentials, archives, or Python step/connector source.
-Auth: `GITHUB_TOKEN` / `GH_TOKEN` from the secrets store; token is injected
-in-process for `git` (`http.extraHeader`) and never written to disk config.
-MCP: `sync_configure` / `sync_init` / `sync_status` / `sync_branch_create` /
-`sync_checkout` / `sync_push` / `sync_pull`. REST: `/api/v1/sync/*`.
+`SyncService` mirrors **versionable workspace metadata** to GitHub under a working
+clone (`navbe_sync_repo/`). EPIC 14 registers `FlowsAsset` only
+(`flows/<flow_id>/flow.json`). Reserved layout for later assets:
+`connectors/`, `destinations/`, `schedules/`. Never syncs runs, credentials,
+OAuth tokens, archives, or Python step/connector source.
+
+Auth: GitHub Device Flow via `GitHubAuthService` → managed
+`navbe_github_oauth.json` (not `secret_set`). Token is injected in-process for
+`git` (`http.extraHeader`) and never written to disk git config.
+
+MCP: `auth_github_*`, `sync_connect` / `sync_configure` / `sync_init` /
+`sync_status` / `sync_branch_create` / `sync_checkout` / `sync_push` /
+`sync_pull`. REST: `/api/v1/sync/*`.
+
+Set `NAVBE_GITHUB_OAUTH_CLIENT_ID` to a GitHub OAuth App client id with Device
+Flow enabled (public client; no client secret required for device flow).
 
 ## Flows domain
 
@@ -113,7 +122,7 @@ though it is not registered in `StepRegistry`.
 
 ## MCP app
 
-`create_mcp_server(flow_service, run_service, catalog_service, secrets_service, sync_service)`
+`create_mcp_server(flow_service, run_service, catalog_service, secrets_service, sync_service, github_auth_service)`
 registers tools and resources. Domain errors become FastMCP `ToolError` with a JSON payload
 (`error` / `code` / `message` / `details`). `flow_run` returns immediately;
 `RunService.start` schedules execution with `asyncio.create_task`.

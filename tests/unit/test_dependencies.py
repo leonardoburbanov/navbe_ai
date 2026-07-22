@@ -42,5 +42,9 @@ def test_dependencies_resettable_between_tests() -> None:
 
 
 def test_get_secrets_service_uses_env_provider() -> None:
-    """SecretsService is wired with EnvSecretsProvider."""
-    assert isinstance(get_secrets_service()._provider, EnvSecretsProvider)
+    """SecretsService chains JSON credentials then EnvSecretsProvider."""
+    from navbe.domains.secrets.json_file import ChainedSecretsProvider
+
+    provider = get_secrets_service()._provider
+    assert isinstance(provider, ChainedSecretsProvider)
+    assert any(isinstance(p, EnvSecretsProvider) for p in provider._providers)

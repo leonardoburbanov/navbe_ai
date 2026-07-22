@@ -234,6 +234,43 @@ class FakeSyncService:
 
         return SyncResult(branch="main", message="pulled")
 
+    async def connect(self, **kwargs: Any) -> Any:
+        from navbe.domains.sync.models import SyncStatus
+
+        return SyncStatus(
+            configured=True,
+            initialized=True,
+            remote_url=f"https://github.com/{kwargs.get('owner')}/{kwargs.get('name')}.git",
+            branch="main",
+        )
+
+
+class FakeGitHubAuthService:
+    """Minimal GitHub auth fake for MCP registration tests."""
+
+    async def begin(self) -> Any:
+        from navbe.domains.sync.github_auth import DeviceBeginResult
+
+        return DeviceBeginResult(
+            user_code="ABCD-1234",
+            verification_uri="https://github.com/login/device",
+            expires_in=900,
+            interval=5,
+        )
+
+    async def complete(self, *, timeout: float = 300.0) -> Any:
+        from navbe.domains.sync.github_auth import GitHubAuthStatus
+
+        return GitHubAuthStatus(logged_in=True, login="octocat", pending=False)
+
+    async def status(self) -> Any:
+        from navbe.domains.sync.github_auth import GitHubAuthStatus
+
+        return GitHubAuthStatus(logged_in=False, login=None, pending=False)
+
+    async def logout(self) -> Any:
+        return await self.status()
+
 
 def make_server(
     flow_service: FakeFlowService | None = None,
@@ -241,6 +278,7 @@ def make_server(
     catalog_service: FakeCatalogService | None = None,
     secrets_service: FakeSecretsService | None = None,
     sync_service: FakeSyncService | None = None,
+    github_auth_service: FakeGitHubAuthService | None = None,
 ):
     """Build an MCP server with fakes."""
     from navbe.mcp_app.server import create_mcp_server
@@ -251,4 +289,5 @@ def make_server(
         catalog_service or FakeCatalogService(),  # type: ignore[arg-type]
         secrets_service or FakeSecretsService(),  # type: ignore[arg-type]
         sync_service or FakeSyncService(),  # type: ignore[arg-type]
+        github_auth_service or FakeGitHubAuthService(),  # type: ignore[arg-type]
     )

@@ -29,6 +29,11 @@ def _default_sync_config_path() -> Path:
     return default_data_home() / "navbe_sync.json"
 
 
+def _default_github_oauth_path() -> Path:
+    """Managed GitHub OAuth token JSON under the active data home."""
+    return default_data_home() / "navbe_github_oauth.json"
+
+
 class Settings(BaseSettings):
     """Navbe runtime settings (env prefix ``NAVBE_``)."""
 
@@ -43,6 +48,9 @@ class Settings(BaseSettings):
     flows_dir: Path = Field(default_factory=_default_flows_dir)
     credentials_path: Path = Field(default_factory=_default_credentials_path)
     sync_config_path: Path = Field(default_factory=_default_sync_config_path)
+    github_oauth_path: Path = Field(default_factory=_default_github_oauth_path)
+    # Public OAuth App client id (Device Flow). Override via NAVBE_GITHUB_OAUTH_CLIENT_ID.
+    github_oauth_client_id: str = ""
     log_level: str = "INFO"
     mcp_server_name: str = "navbe"
     anthropic_api_key: str | None = None

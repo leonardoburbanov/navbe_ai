@@ -10,6 +10,7 @@ from navbe.domains.execution.service import RunService
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 from navbe.domains.secrets.service import SecretsService
+from navbe.domains.sync.github_auth import GitHubAuthService
 from navbe.domains.sync.service import SyncService
 from navbe.mcp_app.errors import mcp_tool_error_handler
 from navbe.mcp_app.guide import NAVBE_HOWTO
@@ -23,8 +24,9 @@ def register_tools(
     catalog_service: CatalogService,
     secrets_service: SecretsService,
     sync_service: SyncService,
+    github_auth_service: GitHubAuthService,
 ) -> None:
-    """Register flow_*, catalog_*, secret_*, and sync_* tools on ``mcp``.
+    """Register flow_*, catalog_*, secret_*, auth_*, and sync_* tools on ``mcp``.
 
     Underscored names (not dotted) so clients like Claude accept them:
     ``^[a-zA-Z0-9_-]{1,64}$``.
@@ -179,6 +181,40 @@ def register_tools(
         runs = await run_service.list_runs(flow_id)
         return {"runs": [run.model_dump(mode="json") for run in runs]}
 
+    @mcp.tool(name="auth_github_begin")
+    @mcp_tool_error_handler
+    async def auth_github_begin() -> dict:
+        """Start GitHub Device Flow. Show user_code + verification_uri to the user.
+
+        Then call auth_github_complete. Never returns tokens.
+        """
+        result = await github_auth_service.begin()
+        return result.model_dump()
+
+    @mcp.tool(name="auth_github_complete")
+    @mcp_tool_error_handler
+    async def auth_github_complete(timeout: float = 300.0) -> dict:
+        """Poll until the user finishes device login; store managed token.
+
+        Never returns the token — only logged_in / login / pending.
+        """
+        status = await github_auth_service.complete(timeout=timeout)
+        return status.model_dump()
+
+    @mcp.tool(name="auth_github_status")
+    @mcp_tool_error_handler
+    async def auth_github_status() -> dict:
+        """GitHub OAuth presence (logged_in, login) — never the token."""
+        status = await github_auth_service.status()
+        return status.model_dump()
+
+    @mcp.tool(name="auth_github_logout")
+    @mcp_tool_error_handler
+    async def auth_github_logout() -> dict:
+        """Clear the managed GitHub OAuth token."""
+        status = await github_auth_service.logout()
+        return status.model_dump()
+
     @mcp.tool(name="sync_configure")
     @mcp_tool_error_handler
     async def sync_configure(
@@ -186,32 +222,52 @@ def register_tools(
         local_repo_dir: str | None = None,
         flows_subdir: str | None = None,
         default_branch: str | None = None,
-        token_secret_key: str | None = None,
     ) -> dict:
-        """Set GitHub sync settings. Token via secret_set(GITHUB_TOKEN), never here.
+        """Set GitHub sync settings. Auth via auth_github_* (Device Flow), never here.
 
-        Syncs only flows/<flow_id>/flow.json organization — not runs or credentials.
+        Workspace layout: flows/<id>/flow.json (+ reserved connectors/destinations/schedules).
         """
         config = await sync_service.configure(
             remote_url=remote_url,
             local_repo_dir=local_repo_dir,
             flows_subdir=flows_subdir,
             default_branch=default_branch,
-            token_secret_key=token_secret_key,
         )
         return config.model_dump()
+
+    @mcp.tool(name="sync_connect")
+    @mcp_tool_error_handler
+    async def sync_connect(
+        owner: str,
+        name: str,
+        private: bool = True,
+        local_repo_dir: str | None = None,
+        default_branch: str | None = None,
+    ) -> dict:
+        """Create-or-bind owner/name on GitHub, configure remote, and init clone.
+
+        Requires prior auth_github_begin + auth_github_complete.
+        """
+        status = await sync_service.connect(
+            owner=owner,
+            name=name,
+            private=private,
+            local_repo_dir=local_repo_dir,
+            default_branch=default_branch,
+        )
+        return status.model_dump()
 
     @mcp.tool(name="sync_init")
     @mcp_tool_error_handler
     async def sync_init() -> dict:
-        """Clone or bind the configured GitHub repo (flows mirror)."""
+        """Clone or bind the configured GitHub repo (workspace mirror)."""
         status = await sync_service.init()
         return status.model_dump()
 
     @mcp.tool(name="sync_status")
     @mcp_tool_error_handler
     async def sync_status() -> dict:
-        """Branch, dirty flag, and local vs remote flow counts."""
+        """Branch, dirty flag, OAuth presence, and local vs remote asset counts."""
         status = await sync_service.status()
         return status.model_dump()
 
@@ -232,13 +288,13 @@ def register_tools(
     @mcp.tool(name="sync_push")
     @mcp_tool_error_handler
     async def sync_push(message: str | None = None) -> dict:
-        """Push local flow.json files to GitHub (flows organization only)."""
+        """Push local workspace assets to GitHub (flows registered today)."""
         result = await sync_service.push(message)
         return result.model_dump()
 
     @mcp.tool(name="sync_pull")
     @mcp_tool_error_handler
     async def sync_pull() -> dict:
-        """Pull flows/<id>/flow.json from GitHub into Navbe (ff-only)."""
+        """Pull workspace assets from GitHub into Navbe (ff-only)."""
         result = await sync_service.pull()
         return result.model_dump()

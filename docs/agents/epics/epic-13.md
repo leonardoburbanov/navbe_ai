@@ -47,6 +47,8 @@ End-user install (no clone): [../../install.md](../../install.md).
 - [x] `navbe` is the human CLI; `navbe serve` runs API; `navbe-mcp` unchanged
 - [x] Secret set/list/delete/has; values never printed
 - [x] Sync subcommands for configure/init/status/branch/checkout/push/pull
+  (EPIC 14 adds `connect` + Device Flow auth)
+
 - [x] Runs history + status + live watch until terminal state
 - [x] Steps list/show from catalog
 - [x] `navbe mcp configure` writes Cursor / Claude Desktop MCP configs

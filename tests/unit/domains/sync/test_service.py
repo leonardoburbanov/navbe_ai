@@ -1,4 +1,4 @@
-"""SyncService: flows/<id>/flow.json only — never runs or archives."""
+"""SyncService: workspace assets (flows/<id>/flow.json) — OAuth auth, never runs."""
 
 from __future__ import annotations
 
@@ -11,8 +11,10 @@ import pytest
 
 from navbe.core.exceptions import ValidationError
 from navbe.domains.flows.models import FlowMetadata, FlowSpec
+from navbe.domains.sync.assets import FlowsAsset, list_flow_ids
 from navbe.domains.sync.models import SyncConfig
-from navbe.domains.sync.service import SyncService, list_flow_ids
+from navbe.domains.sync.oauth_store import GitHubOAuthStore
+from navbe.domains.sync.service import SyncService
 
 
 def _minimal_spec(flow_id: str, name: str = "") -> dict[str, Any]:
@@ -45,16 +47,6 @@ def _write_flow(root: Path, flow_id: str, **extra_files: str) -> None:
         target = flow_dir / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
-
-
-class FakeSecrets:
-    """Secrets stub that returns a fixed token."""
-
-    def __init__(self, token: str = "test-token") -> None:
-        self.token = token
-
-    async def resolve_ref(self, key: str) -> str:
-        return self.token
 
 
 class FakeFlowRepo:
@@ -147,11 +139,12 @@ class FakeGitRemote:
 
 @pytest.fixture
 def sync_env(tmp_path: Path) -> dict[str, Any]:
-    """Temp flows dir, clone dir, config, FakeGit, SyncService."""
+    """Temp flows dir, clone dir, config, OAuth store, FakeGit, SyncService."""
     flows_dir = tmp_path / "navbe_flows"
     flows_dir.mkdir()
     repo_dir = tmp_path / "navbe_sync_repo"
     config_path = tmp_path / "navbe_sync.json"
+    oauth_path = tmp_path / "navbe_github_oauth.json"
     config = SyncConfig(
         remote_url="https://github.com/org/navbe-flows.git",
         local_repo_dir=str(repo_dir),
@@ -159,23 +152,35 @@ def sync_env(tmp_path: Path) -> dict[str, Any]:
         default_branch="main",
     )
     config_path.write_text(config.model_dump_json(indent=2), encoding="utf-8")
+    oauth = GitHubOAuthStore(oauth_path)
     git = FakeGitRemote()
     repo = FakeFlowRepo(flows_dir)
+    asset = FlowsAsset(flows_dir=flows_dir, flow_repository=repo)  # type: ignore[arg-type]
     service = SyncService(
         config_path=config_path,
         flows_dir=flows_dir,
         flow_repository=repo,  # type: ignore[arg-type]
-        secrets_service=FakeSecrets(),  # type: ignore[arg-type]
+        oauth_store=oauth,
+        assets=[asset],
         git=git,
     )
     return {
         "flows_dir": flows_dir,
         "repo_dir": repo_dir,
         "config_path": config_path,
+        "oauth": oauth,
         "git": git,
         "repo": repo,
         "service": service,
     }
+
+
+@pytest.fixture
+async def sync_env_ready(sync_env: dict[str, Any]) -> dict[str, Any]:
+    """Same as sync_env but with an OAuth token saved."""
+    oauth: GitHubOAuthStore = sync_env["oauth"]
+    await oauth.save_token(access_token="test-token", login="tester")
+    return sync_env
 
 
 def test_list_flow_ids_ignores_dirs_without_flow_json(tmp_path: Path) -> None:
@@ -187,17 +192,16 @@ def test_list_flow_ids_ignores_dirs_without_flow_json(tmp_path: Path) -> None:
 
 
 async def test_push_copies_only_flow_json_not_runs_or_archives(
-    sync_env: dict[str, Any],
+    sync_env_ready: dict[str, Any],
 ) -> None:
     """Push mirrors flows/<id>/flow.json only — drops runs/ and archives."""
-    flows_dir: Path = sync_env["flows_dir"]
-    repo_dir: Path = sync_env["repo_dir"]
-    git: FakeGitRemote = sync_env["git"]
-    service: SyncService = sync_env["service"]
+    flows_dir: Path = sync_env_ready["flows_dir"]
+    repo_dir: Path = sync_env_ready["repo_dir"]
+    git: FakeGitRemote = sync_env_ready["git"]
+    service: SyncService = sync_env_ready["service"]
 
     await git.ensure_clone("url", str(repo_dir), "main")
     remote_flows = repo_dir / "flows"
-    # Stale remote junk that must be replaced by flow.json only.
     _write_flow(remote_flows, "alpha", **{"flow.v1.json": "{}", "runs/x.json": "{}"})
     _write_flow(
         flows_dir,
@@ -211,6 +215,7 @@ async def test_push_copies_only_flow_json_not_runs_or_archives(
     assert result.message == "pushed"
     assert set(result.flows_added + result.flows_updated) >= {"alpha", "beta"}
     assert git.commit_calls[0][2] == ["flows"]
+    assert git.commit_calls[0][1] == "sync test"
     assert git.push_calls == [(str(repo_dir), "main")]
 
     alpha = remote_flows / "alpha"
@@ -222,13 +227,13 @@ async def test_push_copies_only_flow_json_not_runs_or_archives(
 
 
 async def test_push_removes_remote_flows_missing_locally(
-    sync_env: dict[str, Any],
+    sync_env_ready: dict[str, Any],
 ) -> None:
     """Remote flow dirs not present locally are deleted on push."""
-    flows_dir: Path = sync_env["flows_dir"]
-    repo_dir: Path = sync_env["repo_dir"]
-    git: FakeGitRemote = sync_env["git"]
-    service: SyncService = sync_env["service"]
+    flows_dir: Path = sync_env_ready["flows_dir"]
+    repo_dir: Path = sync_env_ready["repo_dir"]
+    git: FakeGitRemote = sync_env_ready["git"]
+    service: SyncService = sync_env_ready["service"]
 
     await git.ensure_clone("url", str(repo_dir), "main")
     remote_flows = repo_dir / "flows"
@@ -237,19 +242,21 @@ async def test_push_removes_remote_flows_missing_locally(
 
     result = await service.push()
     assert result.flows_removed == ["gone"]
+    assert result.message == "pushed"
+    assert git.commit_calls[0][1] == "navbe: sync workspace"
     assert not (remote_flows / "gone").exists()
     assert (remote_flows / "keep" / "flow.json").is_file()
 
 
 async def test_pull_imports_only_flow_json_organization(
-    sync_env: dict[str, Any],
+    sync_env_ready: dict[str, Any],
 ) -> None:
     """Pull imports flows/<id>/flow.json; ignores remote runs/archives; drops local extras."""
-    flows_dir: Path = sync_env["flows_dir"]
-    repo_dir: Path = sync_env["repo_dir"]
-    git: FakeGitRemote = sync_env["git"]
-    repo: FakeFlowRepo = sync_env["repo"]
-    service: SyncService = sync_env["service"]
+    flows_dir: Path = sync_env_ready["flows_dir"]
+    repo_dir: Path = sync_env_ready["repo_dir"]
+    git: FakeGitRemote = sync_env_ready["git"]
+    repo: FakeFlowRepo = sync_env_ready["repo"]
+    service: SyncService = sync_env_ready["service"]
 
     await git.ensure_clone("url", str(repo_dir), "main")
     remote_flows = repo_dir / "flows"
@@ -274,23 +281,24 @@ async def test_pull_imports_only_flow_json_organization(
     assert git.pull_calls
 
 
-async def test_checkout_fails_when_dirty(sync_env: dict[str, Any]) -> None:
+async def test_checkout_fails_when_dirty(sync_env_ready: dict[str, Any]) -> None:
     """Dirty clone blocks checkout."""
-    repo_dir: Path = sync_env["repo_dir"]
-    git: FakeGitRemote = sync_env["git"]
-    service: SyncService = sync_env["service"]
+    repo_dir: Path = sync_env_ready["repo_dir"]
+    git: FakeGitRemote = sync_env_ready["git"]
+    service: SyncService = sync_env_ready["service"]
     await git.ensure_clone("url", str(repo_dir), "main")
     git.dirty = True
     with pytest.raises(ValidationError, match="dirty"):
         await service.checkout("feature")
 
 
-async def test_configure_and_init(sync_env: dict[str, Any]) -> None:
+async def test_configure_and_init(sync_env_ready: dict[str, Any]) -> None:
     """configure persists settings; init clones via FakeGit."""
-    service: SyncService = sync_env["service"]
-    git: FakeGitRemote = sync_env["git"]
+    service: SyncService = sync_env_ready["service"]
+    git: FakeGitRemote = sync_env_ready["git"]
     config = await service.configure(remote_url="https://github.com/o/r.git")
     assert config.remote_url.endswith("/r.git")
     status = await service.init()
     assert status.initialized is True
+    assert status.github_logged_in is True
     assert git.ensure_clone_calls

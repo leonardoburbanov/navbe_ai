@@ -16,6 +16,7 @@ from tests.unit.domains.execution.test_interfaces import FakeExecutionEngine
 from tests.unit.domains.execution.test_service import FakeConnectorService, FakeFlowService
 from tests.unit.mcp_app.conftest import (
     FakeCatalogService,
+    FakeGitHubAuthService,
     FakeRunService,
     FakeSecretsService,
     FakeSyncService,
@@ -55,6 +56,7 @@ async def test_flow_run_returns_run_id_without_blocking() -> None:
         FakeCatalogService(),  # type: ignore[arg-type]
         FakeSecretsService(),  # type: ignore[arg-type]
         FakeSyncService(),  # type: ignore[arg-type]
+        FakeGitHubAuthService(),  # type: ignore[arg-type]
     )
     async with Client(server) as client:
         result = await client.call_tool("flow_run", {"flow_id": "slow", "initial_input": {}})

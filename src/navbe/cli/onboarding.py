@@ -29,10 +29,9 @@ NAVBE_BLUE = "#1e67e8"
 DOCS_QUICKSTART = "docs/agents/quickstart.md"
 DOCS_CONNECT = "docs/connect_agents.md"
 
-# Keys humans/agents commonly need — presence only, never values.
+# Keys humans/agents commonly need for connectors — presence only, never values.
+# GitHub sync auth is via Device Flow (navbe login github), not secret_set.
 RECOMMENDED_KEYS = (
-    "GITHUB_TOKEN",
-    "GH_TOKEN",
     "NAVBE_ANTHROPIC_API_KEY",
     "CRM_API_KEY",
 )
@@ -42,8 +41,8 @@ QUICK_START = """\
 
   1. [cyan]navbe setup[/cyan]              Verify install + local data dirs
   2. [cyan]navbe mcp configure[/cyan]       Wire Cursor / Claude Desktop to navbe-mcp
-  3. [cyan]navbe secret set GITHUB_TOKEN[/cyan]   Store credentials (hidden prompt)
-  4. [cyan]navbe sync configure --remote-url URL[/cyan]   Optional GitHub flows mirror
+  3. [cyan]navbe login github[/cyan]        GitHub Device Flow (for sync)
+  4. [cyan]navbe sync connect OWNER REPO[/cyan]   Bind/create workspace repo
   5. In the agent: call [cyan]navbe_howto[/cyan], then
      [cyan]catalog_steps[/cyan] / [cyan]flow_list[/cyan]
 
@@ -173,8 +172,8 @@ def _smart_tip(snap: _MenuSnapshot) -> str:
         )
     if snap.secret_keys == 0:
         return "No credentials stored yet - run /setup or: navbe secret set KEY"
-    if "GITHUB_TOKEN" in snap.missing_recommended and not snap.sync_configured:
-        return "Optional: store GITHUB_TOKEN then configure sync for GitHub flows."
+    if not snap.sync_configured:
+        return "Optional: navbe login github, then navbe sync connect OWNER REPO."
     if snap.sync_configured and not snap.sync_initialized:
         return "Sync is configured but not initialized - run: navbe sync init"
     return (

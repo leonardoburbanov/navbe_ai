@@ -18,6 +18,7 @@ htmlcov/
 navbe_flows/
 navbe_credentials.json
 *.credentials.json
+navbe_github_oauth.json
 navbe_sync.json
 navbe_sync_repo/
 exports/

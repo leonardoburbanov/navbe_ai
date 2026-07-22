@@ -40,7 +40,7 @@ src/navbe/
     execution/      # run lifecycle, modes, history
     secrets/        # credential storage/resolution
     catalog/        # discovery of connectors, destinations, flows
-    sync/           # GitHub mirror of flows/<id>/flow.json only
+    sync/           # GitHub workspace sync (flows + reserved assets; OAuth)
   api/              # FastAPI routes (thin; call services)
   mcp_app/          # FastMCP tools (thin; call services)
   cli/              # Human ops console (Click + Rich)

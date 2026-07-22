@@ -1,6 +1,5 @@
 """Tests for /api/v1/secrets routes (never return values)."""
 
-from typing import Any
 
 import pytest
 from fastapi import FastAPI

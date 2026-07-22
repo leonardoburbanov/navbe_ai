@@ -12,6 +12,7 @@ ALLOWED_CALL_NAMES = {
     "create",
     "get",
     "list",
+    "update",
     "start",
     "status",
     "resume",
