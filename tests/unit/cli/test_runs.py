@@ -32,3 +32,15 @@ def test_runs_watch_until_completed(monkeypatch) -> None:
     result = runner.invoke(cli, ["runs", "watch", "r1", "--interval", "0.01"])
     assert result.exit_code == 0
     assert "completed" in result.output.lower()
+
+
+def test_runs_watch_all_until_idle(monkeypatch) -> None:
+    """Watch with no run_id polls all runs until none are active."""
+    fake = FakeRunService()
+    monkeypatch.setattr("navbe.cli.runs.get_run_service", lambda: fake)
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["runs", "watch", "--interval", "0.01"])
+    assert result.exit_code == 0
+    assert "r1" in result.output
+    assert "completed" in result.output.lower()

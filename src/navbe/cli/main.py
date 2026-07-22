@@ -47,7 +47,7 @@ def cli(ctx: click.Context) -> None:
       navbe sync pull          Import flows/<id>/flow.json from GitHub
       navbe flows list         All persisted flows
       navbe runs list          All runs (optional FLOW_ID filter)
-      navbe runs watch RUN_ID  Live run status until done
+      navbe runs watch         Live all runs (or watch RUN_ID)
       navbe steps              Available step types
       navbe serve              HTTP API + MCP mount
     """

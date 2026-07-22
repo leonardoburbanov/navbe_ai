@@ -96,23 +96,30 @@ class FakeRunService:
             )
         }
         self._polls = 0
+        self._list_polls = 0
 
     async def status(self, run_id: str) -> RunState:
         self._polls += 1
-        state = self._runs[run_id]
-        if self._polls >= 2 and state.status == RunStatus.RUNNING:
-            completed = state.model_copy(
-                update={"status": RunStatus.COMPLETED, "current_node": None}
-            )
-            self._runs[run_id] = completed
-            return completed
-        return state
+        self._complete_running_if(self._polls >= 2)
+        return self._runs[run_id]
 
     async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        self._list_polls += 1
+        self._complete_running_if(self._list_polls >= 2)
         runs = list(self._runs.values())
         if flow_id is not None:
             runs = [r for r in runs if r.flow_id == flow_id]
         return runs
+
+    def _complete_running_if(self, ready: bool) -> None:
+        """Flip running → completed once enough polls have happened."""
+        if not ready:
+            return
+        for run_id, state in list(self._runs.items()):
+            if state.status == RunStatus.RUNNING:
+                self._runs[run_id] = state.model_copy(
+                    update={"status": RunStatus.COMPLETED, "current_node": None}
+                )
 
 
 class FakeCatalogService:

@@ -63,9 +63,9 @@ def print_flows_table(flows: list[FlowMetadata]) -> None:
         console.print(table)
 
 
-def print_runs_table(runs: list[RunState]) -> None:
-    """Print run history as a table."""
-    table = Table(title="Run history")
+def build_runs_table(runs: list[RunState], *, title: str = "Run history") -> Table:
+    """Build a Rich table of runs (for print or Live)."""
+    table = Table(title=title)
     table.add_column("run_id", overflow="fold")
     table.add_column("flow_id", overflow="fold")
     table.add_column("status")
@@ -82,10 +82,15 @@ def print_runs_table(runs: list[RunState]) -> None:
             _fmt_dt(run.updated_at),
             run.error or "-",
         )
+    return table
+
+
+def print_runs_table(runs: list[RunState]) -> None:
+    """Print run history as a table."""
     if not runs:
         console.print("[dim]No runs found.[/dim]")
-    else:
-        console.print(table)
+        return
+    console.print(build_runs_table(runs))
 
 
 def print_sync_status(status: SyncStatus) -> None:
