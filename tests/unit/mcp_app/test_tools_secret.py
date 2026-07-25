@@ -10,20 +10,29 @@ from tests.unit.mcp_app.conftest import FakeSecretsService, make_server
 
 
 async def test_secret_set_list_delete_round_trip() -> None:
-    """secret_set stores; secret_list returns keys only; secret_delete removes."""
+    """secret_set stores; secret_list returns keys + items; secret_delete removes."""
     secrets = FakeSecretsService()
     server = make_server(secrets_service=secrets)
     async with Client(server) as client:
         stored = await client.call_tool(
             "secret_set",
-            {"key": "API_KEY", "value": "sk-should-not-echo"},
+            {"key": "API_KEY", "value": "sk-should-not-echo", "app": "crm"},
         )
-        assert stored.data == {"key": "API_KEY", "stored": True}
+        assert stored.data["key"] == "API_KEY"
+        assert stored.data["stored"] is True
+        assert stored.data["hint"] == "****echo"
+        assert stored.data["app"] == "crm"
         assert "sk-should-not-echo" not in str(stored.data)
 
         listed = await client.call_tool("secret_list", {})
-        assert listed.data == {"keys": ["API_KEY"]}
+        assert listed.data["keys"] == ["API_KEY"]
+        assert listed.data["items"][0]["hint"] == "****echo"
+        assert listed.data["items"][0]["app"] == "crm"
         assert "sk-should-not-echo" not in str(listed.data)
+
+        hinted = await client.call_tool("secret_hint", {"key": "API_KEY"})
+        assert hinted.data["hint"] == "****echo"
+        assert hinted.data["source"] == "store"
 
         has = await client.call_tool("secret_has", {"key": "API_KEY"})
         assert has.data == {"key": "API_KEY", "present": True}

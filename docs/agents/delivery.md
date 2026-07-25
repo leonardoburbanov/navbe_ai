@@ -69,4 +69,5 @@ Prefer code as source of truth. No speculative docs for packages that do not exi
 - [EPIC 13 — Human CLI](epics/epic-13.md) — done (`navbe` ops console + `mcp configure`; see [../install.md](../install.md))
 - [EPIC 14 — GitHub OAuth + Workspace Sync](epics/epic-14.md) — done (device flow; pluggable workspace assets)
 - [EPIC 15 — GitHub App auth](epics/epic-15.md) — done (GitHub App Device Flow + refresh tokens)
+- [EPIC 16 — Per-app credentials](epics/epic-16.md) — done (app label, masked hint, rotate via CLI/MCP)
 - See also [../install.md](../install.md) for CLI distribution and [../connect_agents.md](../connect_agents.md) for Claude Desktop / Cursor setup

@@ -176,21 +176,62 @@ class FakeSecretsService:
 
     def __init__(self) -> None:
         self._data: dict[str, str] = {}
+        self._apps: dict[str, str | None] = {}
         self.set_error: Exception | None = None
 
-    async def set(self, key: str, value: str) -> None:
+    async def set(self, key: str, value: str, *, app: str | None = None) -> Any:
+        from navbe.domains.secrets.models import CredentialHint, mask_secret
+
         if self.set_error is not None:
             raise self.set_error
+        resolved_app = app if app is not None else self._apps.get(key)
         self._data[key] = value
+        self._apps[key] = resolved_app
+        return CredentialHint(
+            key=key,
+            hint=mask_secret(value),
+            app=resolved_app,
+            source="store",
+        )
 
     async def delete(self, key: str) -> bool:
         if key not in self._data:
             return False
         del self._data[key]
+        self._apps.pop(key, None)
         return True
 
     async def list_keys(self) -> list[str]:
         return sorted(self._data.keys())
+
+    async def list_credentials(self) -> list[Any]:
+        from navbe.domains.secrets.models import CredentialHint, mask_secret
+
+        return [
+            CredentialHint(
+                key=key,
+                hint=mask_secret(self._data[key]),
+                app=self._apps.get(key),
+                source="store",
+            )
+            for key in sorted(self._data.keys())
+        ]
+
+    async def get_hint(self, key: str) -> Any:
+        from navbe.core.exceptions import NotFoundError
+        from navbe.domains.secrets.models import CredentialHint, mask_secret
+
+        if key not in self._data:
+            raise NotFoundError(
+                f"Secret '{key}' not found",
+                details={"key": key},
+            )
+        return CredentialHint(
+            key=key,
+            hint=mask_secret(self._data[key]),
+            app=self._apps.get(key),
+            source="store",
+        )
 
     async def has(self, key: str) -> bool:
         return key in self._data

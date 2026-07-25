@@ -83,7 +83,55 @@ async def test_service_set_list_has(tmp_path: Path) -> None:
         store=store,
         presence_checks=[store, env],
     )
-    await service.set("RESEND_API_KEY", "re-test")
+    hint = await service.set("RESEND_API_KEY", "re-test-key", app="resend")
+    assert hint.hint == "****-key"
+    assert hint.app == "resend"
     assert await service.list_keys() == ["RESEND_API_KEY"]
+    items = await service.list_credentials()
+    assert items[0].hint == "****-key"
+    assert items[0].app == "resend"
     assert await service.has("RESEND_API_KEY") is True
     assert await service.delete("RESEND_API_KEY") is True
+
+
+async def test_legacy_string_entry_still_resolves(tmp_path: Path) -> None:
+    """Flat string credentials files remain readable."""
+    path = tmp_path / "creds.json"
+    path.write_text('{"LEGACY_KEY": "legacy-secret-value"}\n', encoding="utf-8")
+    store = JsonFileSecretsProvider(path)
+    assert await store.resolve("LEGACY_KEY") == "legacy-secret-value"
+    record = await store.get_record("LEGACY_KEY")
+    assert record is not None
+    assert record.value == "legacy-secret-value"
+    assert record.app is None
+
+
+async def test_set_preserves_app_on_rotate(tmp_path: Path) -> None:
+    """Rotating without app keeps the existing app label."""
+    store = JsonFileSecretsProvider(tmp_path / "creds.json")
+    await store.set("RESEND_API_KEY", "old-value-aaaa", app="resend")
+    await store.set("RESEND_API_KEY", "new-value-bbbb")
+    record = await store.get_record("RESEND_API_KEY")
+    assert record is not None
+    assert record.value == "new-value-bbbb"
+    assert record.app == "resend"
+
+
+async def test_get_hint_env_only_has_no_hint(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Env-only keys are present but never return a value-derived hint."""
+    monkeypatch.setenv("ONLY_ENV", "env-secret-zzzz")
+    store = JsonFileSecretsProvider(tmp_path / "creds.json")
+    env = EnvSecretsProvider()
+    service = SecretsService(
+        ChainedSecretsProvider([store, env]),
+        store=store,
+        presence_checks=[store, env],
+    )
+    assert await service.has("ONLY_ENV") is True
+    hint = await service.get_hint("ONLY_ENV")
+    assert hint.source == "env"
+    assert hint.hint is None
+    assert "zzzz" not in str(hint.model_dump())

@@ -15,14 +15,27 @@ def test_secret_set_list_has_delete(monkeypatch) -> None:
     monkeypatch.setattr("navbe.cli.actions.get_secrets_service", lambda: fake)
     runner = CliRunner()
 
-    result = runner.invoke(cli, ["secret", "set", "API_KEY"], input="super-secret\n")
+    result = runner.invoke(
+        cli,
+        ["secret", "set", "API_KEY", "--app", "crm"],
+        input="super-secret\n",
+    )
     assert result.exit_code == 0
     assert "super-secret" not in result.output
     assert "Stored" in result.output
+    assert "****cret" in result.output
+    assert "app=crm" in result.output
 
     result = runner.invoke(cli, ["secret", "list"])
     assert result.exit_code == 0
     assert "API_KEY" in result.output
+    assert "****cret" in result.output
+    assert "super-secret" not in result.output
+
+    result = runner.invoke(cli, ["secret", "hint", "API_KEY"])
+    assert result.exit_code == 0
+    assert "****cret" in result.output
+    assert "source=store" in result.output
 
     result = runner.invoke(cli, ["secret", "has", "API_KEY"])
     assert result.exit_code == 0

@@ -1,4 +1,4 @@
-"""navbe secret — local credentials (never echo values)."""
+"""navbe secret — local credentials (masked hints only; never full values)."""
 
 from __future__ import annotations
 
@@ -23,20 +23,39 @@ app = typer.Typer(
 @handle_navbe_errors
 def secret_set(
     key: Annotated[str, typer.Argument(help="Credential key name.")],
+    app: Annotated[
+        str | None,
+        typer.Option("--app", help="Optional app slug (e.g. resend)."),
+    ] = None,
 ) -> None:
     """Store a credential key (prompts for value via hidden input)."""
     value = getpass.getpass(f"Value for {key}: ")
     if not value:
         raise typer.BadParameter("Empty value; aborted.")
-    run_async(get_secrets_service().set(key, value))
-    console.print(f"[green]Stored[/green] key={key}")
+    hint = run_async(get_secrets_service().set(key, value, app=app))
+    parts = [f"[green]Stored[/green] key={hint.key}", f"hint={hint.hint}"]
+    if hint.app:
+        parts.append(f"app={hint.app}")
+    console.print(" ".join(parts))
 
 
 @app.command("list")
 @handle_navbe_errors
 def secret_list() -> None:
-    """List credential keys (never values)."""
+    """List credentials with masked hints (never values)."""
     list_secret_keys()
+
+
+@app.command("hint")
+@handle_navbe_errors
+def secret_hint(
+    key: Annotated[str, typer.Argument(help="Credential key to inspect.")],
+) -> None:
+    """Show masked metadata for a key (never the full value)."""
+    hint = run_async(get_secrets_service().get_hint(key))
+    app_label = hint.app or "-"
+    hint_label = hint.hint if hint.hint is not None else "(env only — no hint)"
+    console.print(f"{hint.key}  app={app_label}  hint={hint_label}  source={hint.source}")
 
 
 @app.command("delete")

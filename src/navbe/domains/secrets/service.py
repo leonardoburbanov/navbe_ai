@@ -7,7 +7,13 @@ from dotenv import load_dotenv
 
 from navbe.core.exceptions import NotFoundError, ValidationError
 from navbe.domains.secrets.interfaces import SecretsProvider, SecretsStore
-from navbe.domains.secrets.models import is_secret_ref, parse_secret_ref, validate_secret_key
+from navbe.domains.secrets.models import (
+    CredentialHint,
+    is_secret_ref,
+    mask_secret,
+    parse_secret_ref,
+    validate_secret_key,
+)
 
 # ponytail: load once at import — upgrade: injectable env source
 load_dotenv()
@@ -75,10 +81,11 @@ class SecretsService:
         """Recursively replace every ``{"$secret": "X"}`` leaf with its value."""
         return await self._walk(config)
 
-    async def set(self, key: str, value: str) -> None:
-        """Store ``key`` in the local credentials file."""
+    async def set(self, key: str, value: str, *, app: str | None = None) -> CredentialHint:
+        """Store ``key`` in the local credentials file; return masked metadata."""
         validate_secret_key(key)
-        await self._require_store().set(key, value)
+        await self._require_store().set(key, value, app=app)
+        return await self.get_hint(key)
 
     async def delete(self, key: str) -> bool:
         """Delete ``key`` from the local credentials file."""
@@ -90,6 +97,58 @@ class SecretsService:
         if self._store is None:
             return []
         return await self._store.list_keys()
+
+    async def list_credentials(self) -> list[CredentialHint]:
+        """List stored credentials with masked hints (never values)."""
+        if self._store is None:
+            return []
+        records = await self._store.list_records()
+        items: list[CredentialHint] = []
+        for key in sorted(records.keys()):
+            record = records[key]
+            items.append(
+                CredentialHint(
+                    key=key,
+                    hint=mask_secret(record.value),
+                    app=record.app,
+                    source="store",
+                    updated_at=record.updated_at,
+                )
+            )
+        return items
+
+    async def get_hint(self, key: str) -> CredentialHint:
+        """Return masked metadata for ``key`` from store or env (never the value)."""
+        validate_secret_key(key)
+        store = self._store
+        if store is not None:
+            record = await store.get_record(key)
+            if record is not None:
+                return CredentialHint(
+                    key=key,
+                    hint=mask_secret(record.value),
+                    app=record.app,
+                    source="store",
+                    updated_at=record.updated_at,
+                )
+        for checker in self._presence:
+            if store is not None and checker is store:
+                continue
+            if await checker.has(key):
+                return CredentialHint(
+                    key=key,
+                    hint=None,
+                    app=None,
+                    source="env",
+                    updated_at=None,
+                )
+        raise NotFoundError(
+            f"Secret '{key}' not found in credentials file or environment",
+            details={
+                "key": key,
+                "hint": "use secret_set or define it in .env / export it",
+            },
+        )
 
     async def has(self, key: str) -> bool:
         """True if ``key`` is present in the credentials file or environment."""

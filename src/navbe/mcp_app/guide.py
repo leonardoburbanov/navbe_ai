@@ -15,7 +15,8 @@ Claude Desktop often does not surface resources to the model.
 2. Call `catalog_steps` and `catalog_connectors` (or `catalog_full`) before authoring.
 3. Call `flow_list` to see what already exists. Use `flow_get` before editing.
 4. For connector API keys: prefer `secret_set` (local JSON credentials) over editing `.env`.
-   Use `secret_list` / `secret_has` to check keys — values are never returned.
+   Pass optional `app` (e.g. `resend`). Use `secret_list` / `secret_hint` / `secret_has`
+   to inspect keys — values are never returned; list/hint show a masked suffix (`****abcd`).
 5. To share workspace metadata via GitHub:
    `auth_github_begin` → show the user the code → `auth_github_complete`
    (GitHub App Device Flow; install the app if prompted), then
@@ -69,7 +70,8 @@ Do **not** invent step_type or connector type strings — only use catalog keys.
 
 Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 (never put live secret values in the spec). Store keys with `secret_set`
-(writes `navbe_credentials.json`); resolution order is credentials file, then env.
+(writes `navbe_credentials.json`, optional `app` label); resolution order is
+credentials file, then env. Use `secret_hint` / `secret_list` for masked previews.
 
 ## Step types (discover via catalog_steps)
 
@@ -89,9 +91,9 @@ Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 | Tool | When |
 | --- | --- |
 | `navbe_howto` | First call / stuck |
-| `secret_*` | Local connector credentials (no values) |
+| `secret_*` | Local connector credentials (masked hints; no full values) |
 | `auth_github_begin` / `auth_github_complete` | GitHub App Device Flow (sync auth) |
-| `auth_github_status` / `auth_github_logout` | OAuth presence / logout / install_url / uninstall_url |
+| `auth_github_status` / `auth_github_logout` | OAuth presence / logout / install URLs |
 | `auth_github_repos` | Repos granted to the installed Navbe AI app |
 | `catalog_steps` / `catalog_connectors` / `catalog_full` | Before authoring |
 | `flow_list` / `flow_get` | Discover existing flows |

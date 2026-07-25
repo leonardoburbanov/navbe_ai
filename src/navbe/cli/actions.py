@@ -81,13 +81,26 @@ def list_steps() -> None:
 
 
 def list_secret_keys() -> None:
-    """List credential keys (never values)."""
-    keys = run_async(get_secrets_service().list_keys())
-    if not keys:
+    """List credentials with masked hints (never values)."""
+    from rich.table import Table
+
+    items = run_async(get_secrets_service().list_credentials())
+    if not items:
         console.print("[dim]No keys stored.[/dim]")
         return
-    for name in keys:
-        console.print(name)
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("key")
+    table.add_column("app")
+    table.add_column("hint")
+    table.add_column("source")
+    for item in items:
+        table.add_row(
+            item.key,
+            item.app or "-",
+            item.hint or "-",
+            item.source,
+        )
+    console.print(table)
 
 
 def show_sync() -> None:

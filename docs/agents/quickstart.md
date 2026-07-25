@@ -60,6 +60,7 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 9](epics/epic-9.md) — e2e demo + client connection status
 - [EPIC 10](epics/epic-10.md) — MCP discovery parity
 - [EPIC 11](epics/epic-11.md) — local credentials store
+- [EPIC 16](epics/epic-16.md) — per-app credentials (masked hint + rotate)
 - [EPIC 12](epics/epic-12.md) — GitHub sync (`flows/<id>/flow.json` only; superseded auth in EPIC 14)
 - [EPIC 13](epics/epic-13.md) — human CLI (`navbe` ops console + `mcp configure`)
 - [EPIC 14](epics/epic-14.md) — GitHub OAuth device flow + workspace sync layout

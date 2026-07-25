@@ -15,6 +15,7 @@ async def test_server_registers_expected_tools() -> None:
         "navbe_howto",
         "secret_set",
         "secret_list",
+        "secret_hint",
         "secret_delete",
         "secret_has",
         "auth_github_begin",

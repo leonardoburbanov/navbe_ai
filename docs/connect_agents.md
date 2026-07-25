@@ -39,7 +39,8 @@ uv run navbe mcp configure
 
 ### 2. Set required secrets
 
-Prefer the human CLI (stores keys in `navbe_credentials.json`, never echoes values):
+Prefer the human CLI (stores keys in `navbe_credentials.json`, never echoes full values;
+`secret list` / `secret hint` show a masked suffix):
 
 ```bash
 navbe secret set CRM_API_KEY

@@ -2,6 +2,8 @@
 
 from typing import Protocol, runtime_checkable
 
+from navbe.domains.secrets.models import CredentialRecord
+
 
 @runtime_checkable
 class SecretsProvider(Protocol):
@@ -16,8 +18,8 @@ class SecretsProvider(Protocol):
 class SecretsStore(Protocol):
     """Mutable store for named secrets (values never exposed via MCP)."""
 
-    async def set(self, key: str, value: str) -> None:
-        """Create or overwrite ``key``."""
+    async def set(self, key: str, value: str, *, app: str | None = None) -> None:
+        """Create or overwrite ``key`` (optional ``app`` label)."""
         ...
 
     async def delete(self, key: str) -> bool:
@@ -30,4 +32,12 @@ class SecretsStore(Protocol):
 
     async def has(self, key: str) -> bool:
         """True if ``key`` is present in this store."""
+        ...
+
+    async def get_record(self, key: str) -> CredentialRecord | None:
+        """Return the stored record for ``key``, or None if missing."""
+        ...
+
+    async def list_records(self) -> dict[str, CredentialRecord]:
+        """Return all stored records keyed by secret name."""
         ...

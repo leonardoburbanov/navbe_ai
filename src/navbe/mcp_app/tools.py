@@ -44,20 +44,37 @@ def register_tools(
 
     @mcp.tool(name="secret_set")
     @mcp_tool_error_handler
-    async def secret_set(key: str, value: str) -> dict:
+    async def secret_set(key: str, value: str, app: str | None = None) -> dict:
         """Store a secret in the local credentials JSON file.
 
-        Never returns the value. Prefer this over editing .env for agent keys.
+        Optional ``app`` slug (e.g. resend). Returns masked hint, never the value.
+        Prefer this over editing .env for agent keys.
         """
-        await secrets_service.set(key, value)
-        return {"key": key, "stored": True}
+        hint = await secrets_service.set(key, value, app=app)
+        return {
+            "key": hint.key,
+            "stored": True,
+            "hint": hint.hint,
+            "app": hint.app,
+        }
 
     @mcp.tool(name="secret_list")
     @mcp_tool_error_handler
     async def secret_list() -> dict:
-        """List credential keys stored in the local JSON file (never values)."""
+        """List credentials in the JSON file (keys + masked items; never values)."""
         keys = await secrets_service.list_keys()
-        return {"keys": keys}
+        items = await secrets_service.list_credentials()
+        return {
+            "keys": keys,
+            "items": [item.model_dump(mode="json") for item in items],
+        }
+
+    @mcp.tool(name="secret_hint")
+    @mcp_tool_error_handler
+    async def secret_hint(key: str) -> dict:
+        """Return masked metadata for a key (store or env); never the value."""
+        hint = await secrets_service.get_hint(key)
+        return hint.model_dump(mode="json")
 
     @mcp.tool(name="secret_delete")
     @mcp_tool_error_handler

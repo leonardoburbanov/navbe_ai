@@ -71,8 +71,10 @@ Built-ins registered in `ConnectorRegistry`:
 `SecretsService` resolves `{"$secret": "KEY"}` leaves in connector configs.
 Resolution order: local JSON credentials file (`NAVBE_CREDENTIALS_PATH`, default
 `./navbe_credentials.json`) then process env / `.env`. Agents manage the JSON
-store via MCP `secret_set` / `secret_list` / `secret_delete` / `secret_has`
-(or REST `/api/v1/secrets`) — values are never returned.
+store via MCP `secret_set` / `secret_list` / `secret_hint` / `secret_delete` /
+`secret_has` (or REST `/api/v1/secrets`) — full values are never returned.
+Entries may carry an optional `app` slug; list/hint return a masked suffix
+(`****` + last 4). Env remains resolve fallback only (no hint from env values).
 Missing keys raise `NotFoundError` with the key name and a hint — never a secret value.
 
 ## Sync domain
@@ -163,7 +165,7 @@ domain services as MCP/REST — no HTTP round-trip. Package: `src/navbe/cli/`.
 
 | Command group | Role |
 | --- | --- |
-| `navbe secret` | Local credentials (values never printed) |
+| `navbe secret` | Local credentials (masked hints; values never printed) |
 | `navbe sync` | GitHub `flows/<id>/flow.json` mirror |
 | `navbe flows` / `navbe runs` / `navbe steps` | Browse flows, runs, step catalog |
 | `navbe serve` | FastAPI + MCP HTTP |
