@@ -25,7 +25,7 @@ from tests.unit.mcp_app.conftest import (
 
 
 async def test_flow_run_returns_run_id_without_blocking() -> None:
-    """flow_run returns before a slow engine.run finishes."""
+    """flow_run with wait=false returns before a slow engine.run finishes."""
     release = asyncio.Event()
     entered = asyncio.Event()
 
@@ -59,7 +59,10 @@ async def test_flow_run_returns_run_id_without_blocking() -> None:
         FakeGitHubAuthService(),  # type: ignore[arg-type]
     )
     async with Client(server) as client:
-        result = await client.call_tool("flow_run", {"flow_id": "slow", "initial_input": {}})
+        result = await client.call_tool(
+            "flow_run",
+            {"flow_id": "slow", "initial_input": {}, "wait": False},
+        )
     assert result.data["status"] == "started"
     assert result.data["run_id"]
     await asyncio.wait_for(entered.wait(), timeout=1.0)
@@ -67,6 +70,19 @@ async def test_flow_run_returns_run_id_without_blocking() -> None:
     release.set()
     if run_service._background_tasks:
         await asyncio.gather(*list(run_service._background_tasks))
+
+
+async def test_flow_run_wait_returns_steps_and_diagram() -> None:
+    """Default wait=true returns enriched detail after the run settles."""
+    run_service = FakeRunService()
+    server = make_server(run_service=run_service)
+    async with Client(server) as client:
+        result = await client.call_tool("flow_run", {"flow_id": "f1"})
+    assert result.data["status"] == "completed"
+    assert result.data["run_id"]
+    assert "steps" in result.data
+    assert "diagram" in result.data
+    assert result.data["diagram"].startswith("flowchart")
 
 
 async def test_flow_run_unknown_flow_returns_structured_error() -> None:

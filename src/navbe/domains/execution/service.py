@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+from navbe.core.exceptions import ExecutionError
 from navbe.domains.connectors.service import ConnectorService
 from navbe.domains.execution.diagram import build_step_executions, render_run_mermaid
 from navbe.domains.execution.interfaces import ExecutionEngine
@@ -43,10 +44,19 @@ class RunService:
         # Keep strong refs so create_task work is not GC'd mid-run.
         self._background_tasks: set[asyncio.Task[Any]] = set()
 
-    async def start(self, flow_id: str, initial_input: Any = None) -> str:
-        """Fetch a flow, schedule execution in the background, return run_id.
+    async def start(
+        self,
+        flow_id: str,
+        initial_input: Any = None,
+        *,
+        wait: bool = False,
+        timeout: float = 300.0,
+    ) -> str:
+        """Fetch a flow, schedule execution, return run_id.
 
-        Returns as soon as the run is scheduled (does not wait for completion).
+        When ``wait`` is True, block until the run settles (completed /
+        failed / paused) or ``timeout`` seconds elapse. The background
+        run keeps going if the wait times out (shielded).
         """
         flow_spec = await self._flow_service.get(flow_id)
         run_id = str(uuid4())
@@ -67,6 +77,16 @@ class RunService:
         task = asyncio.create_task(self._engine.run(flow_spec, run_id, initial_input))
         self._background_tasks.add(task)
         task.add_done_callback(self._background_tasks.discard)
+
+        if wait:
+            try:
+                # shield: canceling the wait must not cancel the run.
+                await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
+            except TimeoutError as exc:
+                raise ExecutionError(
+                    f"Run '{run_id}' did not settle within {timeout}s",
+                    details={"run_id": run_id, "timeout": timeout},
+                ) from exc
         return run_id
 
     async def status(self, run_id: str) -> RunState:

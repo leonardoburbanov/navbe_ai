@@ -178,20 +178,39 @@ def register_tools(
 
     @mcp.tool(name="flow_run")
     @mcp_tool_error_handler
-    async def flow_run(flow_id: str, initial_input: dict | None = None) -> dict:
-        """Start a flow run. Ask the user before calling. Returns run_id immediately.
+    async def flow_run(
+        flow_id: str,
+        initial_input: dict | None = None,
+        wait: bool = True,
+        timeout: float = 300.0,
+    ) -> dict:
+        """Start a flow run. Ask the user before calling.
 
-        Then poll flow_status until completed / failed / paused.
+        Default ``wait=true``: blocks until completed / failed / paused, then
+        returns the full status including ``steps`` and Mermaid ``diagram``.
+        ALWAYS show the user the ``diagram`` as a mermaid fenced code block
+        (and a short ``steps`` summary) — do not only report business side
+        effects. Use ``wait=false`` only for fire-and-forget, then poll
+        ``flow_status``.
         """
-        run_id = await run_service.start(flow_id, initial_input)
-        return {"run_id": run_id, "status": "started"}
+        run_id = await run_service.start(
+            flow_id,
+            initial_input,
+            wait=wait,
+            timeout=timeout,
+        )
+        if not wait:
+            return {"run_id": run_id, "status": "started"}
+        detail = await run_service.detail(run_id)
+        return _run_detail_payload(detail)
 
     @mcp.tool(name="flow_status")
     @mcp_tool_error_handler
     async def flow_status(run_id: str) -> dict:
         """Poll run state: status, steps timeline, Mermaid diagram, outputs, error.
 
-        When terminal, show the user the ``diagram`` Mermaid block.
+        ALWAYS show the user the ``diagram`` Mermaid block when status is
+        completed, failed, or paused — do not omit it.
         """
         detail = await run_service.detail(run_id)
         return _run_detail_payload(detail)
@@ -201,7 +220,7 @@ def register_tools(
     async def flow_resume(run_id: str, decision: dict) -> dict:
         """Resume a paused approval node. decision: {\"approved\": bool, ...}.
 
-        Returns the same enriched shape as flow_status (steps + diagram).
+        Returns steps + diagram. ALWAYS show the user the ``diagram`` Mermaid block.
         """
         await run_service.resume(run_id, decision)
         detail = await run_service.detail(run_id)

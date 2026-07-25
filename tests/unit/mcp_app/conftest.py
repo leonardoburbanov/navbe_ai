@@ -125,16 +125,24 @@ class FakeRunService:
         self.runs_by_flow: dict[str, list[RunState]] = {}
         self._slow_done = False
 
-    async def start(self, flow_id: str, initial_input: Any = None) -> str:
+    async def start(
+        self,
+        flow_id: str,
+        initial_input: Any = None,
+        *,
+        wait: bool = False,
+        timeout: float = 300.0,
+    ) -> str:
         if self.start_error is not None:
             raise self.start_error
         self.started.append((flow_id, initial_input))
         run_id = f"run-{len(self.started)}"
         now = datetime.now(UTC)
+        status = RunStatus.COMPLETED if wait else RunStatus.PENDING
         self.states[run_id] = RunState(
             run_id=run_id,
             flow_id=flow_id,
-            status=RunStatus.PENDING,
+            status=status,
             created_at=now,
             updated_at=now,
         )

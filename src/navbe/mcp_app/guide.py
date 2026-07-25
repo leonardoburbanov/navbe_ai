@@ -31,15 +31,17 @@ Do **not** invent step_type or connector type strings — only use catalog keys.
 2. `flow_validate` — fix until `valid` is true.
 3. `flow_create` (new) or `flow_update` (existing `flow_id`).
 4. **Ask the user before** `flow_run`.
-5. Poll `flow_status` with the returned `run_id` until status is
-   `completed`, `failed`, or `paused`.
-6. When the run is terminal (or paused), show the user the `diagram`
-   Mermaid flowchart from `flow_status` (as a mermaid fenced code block)
-   and optionally summarize `steps` (node_id / step_type / status / latency).
+5. Prefer default `flow_run` (`wait=true`). The tool blocks until the run
+   settles and returns `steps` + Mermaid `diagram` in the same response.
+6. **Always** show the user that `diagram` as a mermaid fenced code block,
+   plus a short `steps` summary (node_id / step_type / status / latency).
+   Do **not** only report side effects (e.g. email ids) — the graph is part
+   of the answer whenever the user asks to run a flow.
 7. If `paused` (approval node): ask the user, then `flow_resume` with
-   `{"approved": true}` or `{"approved": false}` — response includes the
-   same `steps` + `diagram` fields.
-8. Optional: `flow_list_runs` for history.
+   `{"approved": true}` or `{"approved": false}` — again show `diagram`.
+8. Use `wait=false` only for long fire-and-forget runs; then poll
+   `flow_status` and still show `diagram` when terminal.
+9. Optional: `flow_list_runs` for history.
 
 ## FlowSpec shape (minimal)
 
@@ -109,7 +111,7 @@ from that file — not from env. Use `secret_hint` / `secret_list` for masked pr
 | `flow_list` / `flow_get` | Discover existing flows |
 | `flow_validate` | Cheap check before save |
 | `flow_create` / `flow_update` | Persist |
-| `flow_run` | Start (ask user first) |
+| `flow_run` | Start (ask first; default wait=true → steps + diagram) |
 | `flow_status` | Poll run (includes `steps` + Mermaid `diagram`) |
 | `flow_resume` | Continue after approval (same enriched shape) |
 | `flow_list_runs` | Run history for one flow |

@@ -2,7 +2,7 @@
 
 **Status:** done  
 **Goal:** Humans and agents can see *how* a run executed — per-step timeline + a ready-to-render Mermaid graph — without inventing it from `node_outputs`.  
-**Non-goal:** Sync `flow_run`; mid-run `RUNNING` streaming; new MCP tool names; CLI flow authoring / start from CLI; web UI.
+**Non-goal:** Mid-run `RUNNING` streaming; new MCP tool names; CLI flow authoring / start from CLI; web UI.
 
 ## Depends on
 
@@ -31,7 +31,10 @@
 
 ### MCP
 
-`flow_status` / `flow_resume` return `RunState` fields plus additive `steps` and `diagram`. Howto tells agents to show the Mermaid block to the user when the run is terminal.
+`flow_run` defaults to ``wait=true``: blocks until settled and returns `steps` +
+Mermaid `diagram` in one response. Agents must show the diagram to the user.
+`flow_status` / `flow_resume` return the same enriched shape. Use ``wait=false``
+only for fire-and-forget + poll.
 
 ## In scope
 
