@@ -84,7 +84,7 @@ Files under that root (unless overridden by `NAVBE_*`):
 | `navbe.db` | SQLite control plane |
 | `navbe_flows/` | Flow definitions + run artifacts |
 | `navbe_credentials.json` | Local secrets (never commit) |
-| `navbe_github_oauth.json` | Managed GitHub OAuth token (never commit) |
+| `navbe_github_oauth.json` | Managed GitHub App token (never commit) |
 | `navbe_sync.json` | GitHub sync config |
 
 See [agents/operations.md](agents/operations.md) for the full env table.
@@ -98,8 +98,9 @@ Agents use **`navbe-mcp`**. Humans use **`navbe`**.
 | `navbe` / `navbe --help` | Interactive slash menu on a TTY; otherwise quick start |
 | `navbe setup` | First-run: data dirs, secrets, sync, optional MCP write |
 | `navbe info [--json]` | Paths, credential/sync readiness, version |
-| `navbe login` / `navbe login github` | OAuth status / GitHub Device Flow |
+| `navbe login` / `navbe login github` | Status / GitHub App Device Flow |
 | `navbe logout github` | Clear managed GitHub OAuth token |
+| `navbe github install` / `uninstall` / `reinstall` / `status` | Install / remove / fix Navbe AI on GitHub |
 | `navbe mcp show` | Print pasteable `mcpServers` JSON |
 | `navbe mcp configure` | Merge Navbe into Cursor / Claude Desktop configs |
 | `navbe secret …` | Local credentials store (connectors) |

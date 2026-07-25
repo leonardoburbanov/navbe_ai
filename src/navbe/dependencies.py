@@ -83,24 +83,25 @@ def get_flow_service() -> FlowService:
 
 @lru_cache
 def get_github_oauth_store() -> GitHubOAuthStore:
-    """Return the managed GitHub OAuth token store."""
+    """Return the managed GitHub App token store."""
     settings = get_settings()
     return GitHubOAuthStore(settings.github_oauth_path)
 
 
 @lru_cache
 def get_github_auth_service() -> GitHubAuthService:
-    """Return GitHub Device Flow auth service."""
+    """Return GitHub App Device Flow auth service."""
     settings = get_settings()
     return GitHubAuthService(
         store=get_github_oauth_store(),
-        client_id=settings.github_oauth_client_id,
+        client_id=settings.github_app_client_id,
+        app_slug=settings.github_app_slug,
     )
 
 
 @lru_cache
 def get_sync_service() -> SyncService:
-    """Return the workspace GitHub sync service (OAuth-backed)."""
+    """Return the workspace GitHub sync service (GitHub App–backed)."""
     settings = get_settings()
     flow_repo = get_flow_repository()
     return SyncService(

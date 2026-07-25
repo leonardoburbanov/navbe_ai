@@ -4,7 +4,7 @@ Push/pull iterates registered ``WorkspaceAsset`` instances. EPIC 14 registers
 flows only (``flows/<flow_id>/flow.json``). Never runs/, archives, credentials,
 OAuth tokens, or Python step source.
 
-Auth: GitHub Device Flow token from ``GitHubOAuthStore`` only.
+Auth: GitHub App Device Flow token (refreshed) from ``GitHubAuthService``.
 """
 
 from __future__ import annotations
@@ -29,8 +29,9 @@ __all__ = [
     "list_flow_ids",
 ]
 
+
 class SyncService:
-    """Configure and run workspace GitHub sync (OAuth-backed)."""
+    """Configure and run workspace GitHub sync (GitHub App–backed)."""
 
     def __init__(
         self,
@@ -72,12 +73,27 @@ class SyncService:
             await handle.write(config.model_dump_json(indent=2) + "\n")
 
     async def _resolve_token(self) -> str:
-        """Resolve GitHub token from the OAuth store only."""
+        """Resolve a valid GitHub App user token (refresh if near expiry)."""
+        if self._auth is not None:
+            try:
+                return await self._auth.get_valid_token()
+            except ConfigurationError:
+                raise
+            except NotFoundError as exc:
+                raise ConfigurationError(
+                    "GitHub App token not found",
+                    details={
+                        "hint": (
+                            "run navbe login github "
+                            "(or auth_github_begin / auth_github_complete)"
+                        ),
+                    },
+                ) from exc
         try:
             return await self._oauth.get_token()
         except NotFoundError as exc:
             raise ConfigurationError(
-                "GitHub OAuth token not found",
+                "GitHub App token not found",
                 details={
                     "hint": "run navbe login github (or auth_github_begin / auth_github_complete)",
                 },
@@ -142,10 +158,11 @@ class SyncService:
             )
         repo_info = await self._auth.ensure_repo(owner=owner, name=name, private=private)
         clone_url = str(repo_info["clone_url"])
+        branch = default_branch or str(repo_info.get("default_branch") or "main")
         await self.configure(
             remote_url=clone_url,
             local_repo_dir=local_repo_dir,
-            default_branch=default_branch,
+            default_branch=branch,
         )
         return await self.init()
 

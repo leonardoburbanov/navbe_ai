@@ -30,7 +30,7 @@ DOCS_QUICKSTART = "docs/agents/quickstart.md"
 DOCS_CONNECT = "docs/connect_agents.md"
 
 # Keys humans/agents commonly need for connectors — presence only, never values.
-# GitHub sync auth is via Device Flow (navbe login github), not secret_set.
+# GitHub sync auth is via GitHub App Device Flow (navbe login github), not secret_set.
 RECOMMENDED_KEYS = (
     "NAVBE_ANTHROPIC_API_KEY",
     "CRM_API_KEY",
@@ -41,10 +41,13 @@ QUICK_START = """\
 
   1. [cyan]navbe setup[/cyan]              Verify install + local data dirs
   2. [cyan]navbe mcp configure[/cyan]       Wire Cursor / Claude Desktop to navbe-mcp
-  3. [cyan]navbe login github[/cyan]        GitHub Device Flow (for sync)
-  4. [cyan]navbe sync connect OWNER REPO[/cyan]   Bind/create workspace repo
-  5. In the agent: call [cyan]navbe_howto[/cyan], then
+  3. [cyan]navbe login github[/cyan]        Authorize Navbe AI (you do not create an app)
+  4. [cyan]navbe github install[/cyan]      Install Navbe AI on GitHub (if needed)
+  5. [cyan]navbe sync connect[/cyan]        Pick a repo you already granted to the app
+  6. In the agent: call [cyan]navbe_howto[/cyan], then
      [cyan]catalog_steps[/cyan] / [cyan]flow_list[/cyan]
+
+  Fix a bad install: [cyan]navbe github reinstall[/cyan]
 
 Agents use [bold]navbe-mcp[/bold]; humans use this CLI. Run [cyan]navbe --help[/cyan] for commands.\
 """
@@ -173,7 +176,10 @@ def _smart_tip(snap: _MenuSnapshot) -> str:
     if snap.secret_keys == 0:
         return "No credentials stored yet - run /setup or: navbe secret set KEY"
     if not snap.sync_configured:
-        return "Optional: navbe login github, then navbe sync connect OWNER REPO."
+        return (
+            "Optional: navbe login github → install Navbe AI → "
+            "navbe sync connect YOUR_USER navbe-workspace."
+        )
     if snap.sync_configured and not snap.sync_initialized:
         return "Sync is configured but not initialized - run: navbe sync init"
     return (

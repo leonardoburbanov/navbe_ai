@@ -38,8 +38,10 @@ Prefer the commands documented in [AGENTS.md](../../AGENTS.md) and
 | `NAVBE_FLOWS_DIR` | Flow definitions directory | `<data-home>/navbe_flows` |
 | `NAVBE_CREDENTIALS_PATH` | Local credentials JSON | `<data-home>/navbe_credentials.json` |
 | `NAVBE_SYNC_CONFIG_PATH` | GitHub sync config JSON | `<data-home>/navbe_sync.json` |
-| `NAVBE_GITHUB_OAUTH_PATH` | Managed GitHub OAuth token JSON | `<data-home>/navbe_github_oauth.json` |
-| `NAVBE_GITHUB_OAUTH_CLIENT_ID` | OAuth App client id (Device Flow) | unset (required for login) |
+| `NAVBE_GITHUB_OAUTH_PATH` | Managed GitHub App token JSON | `<data-home>/navbe_github_oauth.json` |
+| `NAVBE_GITHUB_APP_CLIENT_ID` | GitHub App client id (Device Flow) | Navbe AI public client id |
+| `NAVBE_GITHUB_APP_SLUG` | App slug for install URL | `navbe-ai` |
+| `NAVBE_GITHUB_OAUTH_CLIENT_ID` | Legacy alias for app client id | unset |
 | `NAVBE_LOG_LEVEL` | Log level | `INFO` |
 | `NAVBE_MCP_SERVER_NAME` | MCP server name | `navbe` |
 | `NAVBE_ANTHROPIC_API_KEY` | Optional Anthropic key | unset |

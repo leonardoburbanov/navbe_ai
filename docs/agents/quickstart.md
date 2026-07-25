@@ -63,6 +63,7 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 12](epics/epic-12.md) — GitHub sync (`flows/<id>/flow.json` only; superseded auth in EPIC 14)
 - [EPIC 13](epics/epic-13.md) — human CLI (`navbe` ops console + `mcp configure`)
 - [EPIC 14](epics/epic-14.md) — GitHub OAuth device flow + workspace sync layout
+- [EPIC 15](epics/epic-15.md) — GitHub App Device Flow auth + token refresh
 - [Connect agents](../connect_agents.md) — Claude Desktop plugin/skill + Cursor MCP setup
 - [Claude plugin](../../claude-plugin/) — `navbe-flows` skill + local `navbe-mcp`
 - [Architecture](architecture.md) — layers and domain pattern

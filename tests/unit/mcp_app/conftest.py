@@ -261,15 +261,44 @@ class FakeGitHubAuthService:
     async def complete(self, *, timeout: float = 300.0) -> Any:
         from navbe.domains.sync.github_auth import GitHubAuthStatus
 
-        return GitHubAuthStatus(logged_in=True, login="octocat", pending=False)
+        return GitHubAuthStatus(
+            logged_in=True,
+            login="octocat",
+            pending=False,
+            app_installed=True,
+            install_url=None,
+        )
 
     async def status(self) -> Any:
         from navbe.domains.sync.github_auth import GitHubAuthStatus
 
-        return GitHubAuthStatus(logged_in=False, login=None, pending=False)
+        return GitHubAuthStatus(
+            logged_in=False,
+            login=None,
+            pending=False,
+            app_installed=None,
+            install_url=None,
+        )
 
     async def logout(self) -> Any:
         return await self.status()
+
+    async def list_accessible_repos(self) -> list[Any]:
+        from navbe.domains.sync.github_auth import GitHubRepoRef
+
+        return [
+            GitHubRepoRef(
+                full_name="octocat/navbe-workspace",
+                owner="octocat",
+                name="navbe-workspace",
+                private=True,
+                html_url="https://github.com/octocat/navbe-workspace",
+                clone_url="https://github.com/octocat/navbe-workspace.git",
+            )
+        ]
+
+    async def get_valid_token(self) -> str:
+        return "fake-token"
 
 
 def make_server(

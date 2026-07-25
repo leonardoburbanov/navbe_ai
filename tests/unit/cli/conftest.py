@@ -111,6 +111,8 @@ class FakeGitHubAuthService:
             logged_in=self.logged_in,
             login=self.login,
             pending=self.pending,
+            app_installed=True if self.logged_in else None,
+            install_url=None,
         )
 
     async def begin(self):
@@ -130,7 +132,13 @@ class FakeGitHubAuthService:
         self.logged_in = True
         self.login = "octocat"
         self.pending = False
-        return GitHubAuthStatus(logged_in=True, login="octocat", pending=False)
+        return GitHubAuthStatus(
+            logged_in=True,
+            login="octocat",
+            pending=False,
+            app_installed=True,
+            install_url=None,
+        )
 
     async def logout(self):
         from navbe.domains.sync.github_auth import GitHubAuthStatus
@@ -138,7 +146,16 @@ class FakeGitHubAuthService:
         self.logged_in = False
         self.login = None
         self.pending = False
-        return GitHubAuthStatus(logged_in=False, login=None, pending=False)
+        return GitHubAuthStatus(
+            logged_in=False,
+            login=None,
+            pending=False,
+            app_installed=None,
+            install_url=None,
+        )
+
+    async def list_accessible_repos(self):
+        return []
 
 
 class FakeRunService:

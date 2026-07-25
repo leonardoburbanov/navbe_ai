@@ -14,6 +14,8 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
         "NAVBE_FLOWS_DIR",
         "NAVBE_CREDENTIALS_PATH",
         "NAVBE_SYNC_CONFIG_PATH",
+        "NAVBE_GITHUB_APP_CLIENT_ID",
+        "NAVBE_GITHUB_OAUTH_CLIENT_ID",
     ):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.chdir(tmp_path)
@@ -26,6 +28,17 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     home = tmp_path / ".navbe"
     assert settings.db_path == home / "navbe.db"
     assert settings.credentials_path == home / "navbe_credentials.json"
+    assert settings.github_app_client_id == "Iv23livr6YIrrz0WNGpN"
+
+
+def test_settings_legacy_oauth_client_id_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Legacy NAVBE_GITHUB_OAUTH_CLIENT_ID fills empty app client id."""
+    monkeypatch.setenv("NAVBE_GITHUB_APP_CLIENT_ID", "")
+    monkeypatch.setenv("NAVBE_GITHUB_OAUTH_CLIENT_ID", "Iv1.legacy")
+    settings = Settings(_env_file=None)
+    assert settings.github_app_client_id == "Iv1.legacy"
 
 
 def test_settings_env_override(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -83,16 +83,19 @@ clone (`navbe_sync_repo/`). EPIC 14 registers `FlowsAsset` only
 `connectors/`, `destinations/`, `schedules/`. Never syncs runs, credentials,
 OAuth tokens, archives, or Python step/connector source.
 
-Auth: GitHub Device Flow via `GitHubAuthService` → managed
-`navbe_github_oauth.json` (not `secret_set`). Token is injected in-process for
+Auth: GitHub App Device Flow via `GitHubAuthService` → managed
+`navbe_github_oauth.json` (not `secret_set`). Access tokens refresh via
+`refresh_token` (no client secret). Token is injected in-process for
 `git` (`http.extraHeader`) and never written to disk git config.
 
 MCP: `auth_github_*`, `sync_connect` / `sync_configure` / `sync_init` /
 `sync_status` / `sync_branch_create` / `sync_checkout` / `sync_push` /
 `sync_pull`. REST: `/api/v1/sync/*`.
 
-Set `NAVBE_GITHUB_OAUTH_CLIENT_ID` to a GitHub OAuth App client id with Device
-Flow enabled (public client; no client secret required for device flow).
+Default Client ID is the public Navbe AI GitHub App
+(`NAVBE_GITHUB_APP_CLIENT_ID`). Enable Device Flow on the app, grant
+Contents + Administration, and install on the account that owns workspace repos.
+Legacy `NAVBE_GITHUB_OAUTH_CLIENT_ID` is still read as a fallback.
 
 ## Flows domain
 

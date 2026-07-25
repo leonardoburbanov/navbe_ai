@@ -17,7 +17,8 @@ Claude Desktop often does not surface resources to the model.
 4. For connector API keys: prefer `secret_set` (local JSON credentials) over editing `.env`.
    Use `secret_list` / `secret_has` to check keys — values are never returned.
 5. To share workspace metadata via GitHub:
-   `auth_github_begin` → show the user the code → `auth_github_complete`, then
+   `auth_github_begin` → show the user the code → `auth_github_complete`
+   (GitHub App Device Flow; install the app if prompted), then
    `sync_connect` (or `sync_configure` + `sync_init`) → `sync_pull` / `sync_push`.
 
 Do **not** invent step_type or connector type strings — only use catalog keys.
@@ -89,8 +90,9 @@ Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 | --- | --- |
 | `navbe_howto` | First call / stuck |
 | `secret_*` | Local connector credentials (no values) |
-| `auth_github_begin` / `auth_github_complete` | GitHub Device Flow (sync auth) |
-| `auth_github_status` / `auth_github_logout` | OAuth presence / logout |
+| `auth_github_begin` / `auth_github_complete` | GitHub App Device Flow (sync auth) |
+| `auth_github_status` / `auth_github_logout` | OAuth presence / logout / install_url / uninstall_url |
+| `auth_github_repos` | Repos granted to the installed Navbe AI app |
 | `catalog_steps` / `catalog_connectors` / `catalog_full` | Before authoring |
 | `flow_list` / `flow_get` | Discover existing flows |
 | `flow_validate` | Cheap check before save |

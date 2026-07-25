@@ -10,7 +10,7 @@ import typer
 from rich.console import Console
 
 from navbe import __version__
-from navbe.cli import flows, mcp, runs, secret, steps, sync
+from navbe.cli import flows, github_app, mcp, runs, secret, steps, sync
 from navbe.cli.info import info_cmd
 from navbe.cli.interactive import run_session, should_start_interactive
 from navbe.cli.login import login_app, logout_app
@@ -38,6 +38,7 @@ app.add_typer(steps.app, name="steps")
 app.add_typer(mcp.app, name="mcp")
 app.add_typer(login_app, name="login")
 app.add_typer(logout_app, name="logout")
+app.add_typer(github_app.app, name="github")
 
 # Top-level commands
 app.command("setup")(setup_cmd)

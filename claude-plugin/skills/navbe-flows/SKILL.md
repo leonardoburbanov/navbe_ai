@@ -20,7 +20,8 @@ Prefer **tools** over `navbe://` resources — Claude Desktop often hides resour
 4. Store API keys with `secret_set` (local `navbe_credentials.json`). Use
    `secret_list` / `secret_has` — never expect values back. Prefer this over `.env`.
 5. GitHub workspace sync: `auth_github_begin` → show user the code →
-   `auth_github_complete`, then `sync_connect` (or `sync_configure` + `sync_init`)
+   `auth_github_complete` (GitHub App; install if prompted), then
+   `sync_connect` (or `sync_configure` + `sync_init`)
    → `sync_pull` / `sync_push`. Flows today; never credentials or runs.
 
 Never invent `step_type` or connector `type` strings — only catalog keys.
@@ -89,12 +90,13 @@ Confirm with `catalog_steps` before use:
 | `flow_run` | Start (ask first) |
 | `flow_status` / `flow_resume` | Poll / continue HITL |
 | `flow_list_runs` | History |
-| `auth_github_*` | Device Flow login for sync |
+| `auth_github_*` | GitHub App Device Flow login for sync |
 | `sync_*` | GitHub workspace mirror (flows today; not runs/credentials) |
 
 ## GitHub sync (workspace)
 
 1. `auth_github_begin` → show `user_code` + `verification_uri` → `auth_github_complete`
+   (install the Navbe AI GitHub App if `install_url` is returned)
 2. `sync_connect` with `owner` + `name` (creates repo if missing), or `sync_configure` + `sync_init`
 3. `sync_pull` to import remote `flows/<flow_id>/flow.json` into local Navbe
 4. Edit locally → `sync_branch_create` → `sync_push`

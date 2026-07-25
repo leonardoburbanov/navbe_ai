@@ -59,8 +59,14 @@ def sync_configure(
 @app.command("connect")
 @handle_navbe_errors
 def sync_connect(
-    owner: Annotated[str, typer.Argument(help="GitHub user or org.")],
-    name: Annotated[str, typer.Argument(help="Repository name.")],
+    owner: Annotated[
+        str | None,
+        typer.Argument(help="GitHub user or org (omit to pick from granted repos)."),
+    ] = None,
+    name: Annotated[
+        str | None,
+        typer.Argument(help="Repository name (omit to pick from granted repos)."),
+    ] = None,
     private: Annotated[
         bool,
         typer.Option("--private/--public", help="Create as private if missing."),
@@ -74,7 +80,20 @@ def sync_connect(
         typer.Option("--default-branch", help="Default branch (default: main)."),
     ] = None,
 ) -> None:
-    """Create-or-bind owner/name, configure remote, and init the clone."""
+    """Bind a repo Navbe AI can access (interactive pick), or create-or-bind owner/name."""
+    from navbe.cli.repo_pick import pick_accessible_repo
+    from navbe.dependencies import get_github_auth_service
+
+    if not owner or not name:
+        auth = get_github_auth_service()
+        repos = run_async(auth.list_accessible_repos())
+        gh = run_async(auth.status())
+        owner, name, picked_private = pick_accessible_repo(
+            repos,
+            default_login=gh.login,
+        )
+        private = picked_private
+
     status = run_async(
         get_sync_service().connect(
             owner=owner,

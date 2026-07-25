@@ -87,8 +87,7 @@ async def _interactive_sync(interactive: bool) -> None:
     """Optionally configure GitHub workspace sync (after Device Flow login)."""
     if not interactive:
         console.print(
-            " [dim]Skipped - run: navbe login github && "
-            "navbe sync connect OWNER REPO[/dim]"
+            " [dim]Skipped - run: navbe login github && navbe sync connect[/dim]"
         )
         return
     if not confirm(interactive, "Configure GitHub workspace sync?", default=False):
@@ -104,13 +103,17 @@ async def _interactive_sync(interactive: bool) -> None:
             await auth.complete(timeout=300.0)
         console.print(" [green]ok[/green] GitHub login stored")
     if confirm(interactive, "Create or bind a repo with sync connect?", default=True):
-        owner = typer.prompt("GitHub owner (user or org)")
-        name = typer.prompt("Repository name", default="navbe-workspace")
-        private = confirm(interactive, "Private repo?", default=True)
+        from navbe.cli.repo_pick import pick_accessible_repo
+        from navbe.dependencies import get_github_auth_service
+
+        auth = get_github_auth_service()
+        repos = await auth.list_accessible_repos()
+        gh = await auth.status()
+        owner, name, private = pick_accessible_repo(repos, default_login=gh.login)
         with console.status("[bold cyan]Connecting sync repo..."):
             status = await get_sync_service().connect(
-                owner=owner.strip(),
-                name=name.strip(),
+                owner=owner,
+                name=name,
                 private=private,
             )
         console.print(

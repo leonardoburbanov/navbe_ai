@@ -204,7 +204,7 @@ def register_tools(
     @mcp.tool(name="auth_github_status")
     @mcp_tool_error_handler
     async def auth_github_status() -> dict:
-        """GitHub OAuth presence (logged_in, login) — never the token."""
+        """GitHub App presence (logged_in, install/uninstall URLs) — never the token."""
         status = await github_auth_service.status()
         return status.model_dump()
 
@@ -214,6 +214,16 @@ def register_tools(
         """Clear the managed GitHub OAuth token."""
         status = await github_auth_service.logout()
         return status.model_dump()
+
+    @mcp.tool(name="auth_github_repos")
+    @mcp_tool_error_handler
+    async def auth_github_repos() -> dict:
+        """List repos granted to the installed Navbe AI GitHub App.
+
+        Use this before sync_connect so the user can pick owner/name.
+        """
+        repos = await github_auth_service.list_accessible_repos()
+        return {"repos": [repo.model_dump() for repo in repos]}
 
     @mcp.tool(name="sync_configure")
     @mcp_tool_error_handler
