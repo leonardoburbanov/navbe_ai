@@ -81,9 +81,10 @@ Missing keys raise `NotFoundError` with the key name and a hint — never a secr
 ## Sync domain
 
 `SyncService` mirrors **versionable workspace metadata** to GitHub under a working
-clone (`navbe_sync_repo/`). EPIC 14 registers `FlowsAsset` only
-(`flows/<flow_id>/flow.json`). Reserved layout for later assets:
-`connectors/`, `destinations/`, `schedules/`. Never syncs runs, credentials,
+clone (`navbe_sync_repo/`). Registered assets: `FlowsAsset`
+(`flows/<flow_id>/flow.json`) and `SchedulesAsset`
+(`schedules/<schedule_id>/schedule.json`). Reserved layout for later assets:
+`connectors/`, `destinations/`. Never syncs runs, credentials,
 OAuth tokens, archives, or Python step/connector source.
 
 Auth: GitHub App Device Flow via `GitHubAuthService` → managed
@@ -107,6 +108,19 @@ Legacy `NAVBE_GITHUB_OAUTH_CLIENT_ID` is still read as a fallback.
 `FileSystemFlowRepository` (`flow.json` + SQLite `flows_index`).
 `update()` archives prior content as `flow.v{n}.json`. Cycles are allowed.
 
+## Schedules domain
+
+`ScheduleSpec` lives at `schedules/<schedule_id>/schedule.json` (not on
+`FlowSpec`). `when` is relative (`+30s` / `+1h` / `+1d`) or a 5-field cron.
+`ScheduleService` + `FileSystemScheduleRepository` (SQLite `schedules_index`)
+own CRUD / enable / disable. Optional `notify` email via Resend
+(`api_key` as `{"$secret": "..."}`, `failure_threshold` default 1, latched
+until a successful run).
+
+`SchedulerLoop` ticks every ~10s **only inside `navbe serve`** (FastAPI
+lifespan). Due schedules call `RunService.start(trigger="schedule")`. If the
+flow is busy, the fire is skipped and `next_run_at` advances.
+
 ## Execution domain
 
 `RunService` loads a `FlowSpec`, compiles it via `compile_flow`, and runs it
@@ -118,6 +132,11 @@ run settles (``wait=false`` for fire-and-forget). `flow_status` /
 `flow_resume` expose the same shape. CLI `navbe runs status` prints a steps
 table (`--diagram` for Mermaid). Reserved step type `approval`
 pauses via LangGraph `interrupt`; `resume` continues with `Command(resume=decision)`.
+
+Single-flight: only one active run (`pending` / `running` / `paused`) per
+flow — further starts raise (or skip when scheduled). `flow_cancel` /
+`RunService.cancel` cancels the asyncio task and persists `CANCELLED`.
+Runs record `trigger` (`manual` | `schedule`) and optional `schedule_id`.
 
 Conditional edges match `node_outputs[source]["route"]` to `edge.condition`
 (same convention as `RouterStep`).
@@ -132,10 +151,12 @@ though it is not registered in `StepRegistry`.
 
 ## MCP app
 
-`create_mcp_server(flow_service, run_service, catalog_service, secrets_service, sync_service, github_auth_service)`
+`create_mcp_server(..., schedule_service=...)`
 registers tools and resources. Domain errors become FastMCP `ToolError` with a JSON payload
-(`error` / `code` / `message` / `details`). `flow_run` returns immediately;
-`RunService.start` schedules execution with `asyncio.create_task`.
+(`error` / `code` / `message` / `details`). `flow_run` returns immediately when
+``wait=false``; `RunService.start` schedules execution with `asyncio.create_task`.
+Schedule tools (`schedule_*`) CRUD configs; the tick loop that fires them runs
+only under `navbe serve`.
 
 Discovery (EPIC 10): tools `catalog_*`, `flow_list`, `flow_get`, `flow_update`
 plus resources `navbe://catalog/*`, `navbe://flows`, `navbe://flows/{flow_id}`.

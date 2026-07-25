@@ -57,3 +57,14 @@ def runs_watch(
     ponytail: poll-based — upgrade: watch state.json on disk.
     """
     watch_runs(run_id, interval=interval)
+
+
+@app.command("cancel")
+@handle_navbe_errors
+def runs_cancel(
+    run_id: Annotated[str, typer.Argument(help="Run id to cancel.")],
+) -> None:
+    """Cancel an active run."""
+    from navbe.cli.actions import cancel_run
+
+    cancel_run(run_id)

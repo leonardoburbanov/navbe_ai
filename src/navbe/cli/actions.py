@@ -16,6 +16,8 @@ from navbe.cli.format import (
     print_run_state,
     print_run_steps,
     print_runs_table,
+    print_schedule,
+    print_schedules_table,
     print_steps_table,
     print_sync_status,
 )
@@ -25,12 +27,13 @@ from navbe.dependencies import (
     get_catalog_service,
     get_flow_service,
     get_run_service,
+    get_schedule_service,
     get_secrets_service,
     get_sync_service,
 )
 from navbe.domains.execution.models import RunState, RunStatus
 
-_TERMINAL = {RunStatus.COMPLETED, RunStatus.FAILED}
+_TERMINAL = {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}
 _ACTIVE = {RunStatus.PENDING, RunStatus.RUNNING, RunStatus.PAUSED}
 
 
@@ -70,6 +73,74 @@ def show_run_status(run_id: str, *, diagram: bool = False) -> None:
     print_run_steps(detail.steps)
     if diagram:
         print_run_diagram(detail.diagram)
+
+
+def cancel_run(run_id: str) -> None:
+    """Cancel an active run and print the resulting state."""
+    state = run_async(get_run_service().cancel(run_id))
+    print_run_state(state)
+
+
+def list_schedules() -> None:
+    """List all schedules."""
+    items = run_async(get_schedule_service().list())
+    print_schedules_table(items)
+
+
+def show_schedule(schedule_id: str) -> None:
+    """Print one schedule document."""
+    schedule = run_async(get_schedule_service().get(schedule_id))
+    print_schedule(schedule)
+
+
+def enable_schedule(schedule_id: str) -> None:
+    """Enable a schedule."""
+    schedule = run_async(get_schedule_service().enable(schedule_id))
+    print_schedule(schedule)
+
+
+def disable_schedule(schedule_id: str) -> None:
+    """Disable a schedule."""
+    schedule = run_async(get_schedule_service().disable(schedule_id))
+    print_schedule(schedule)
+
+
+def list_schedule_runs(schedule_id: str | None = None) -> None:
+    """List schedule-triggered runs."""
+    runs = run_async(get_run_service().list_schedule_runs(schedule_id))
+    print_runs_table(runs)
+
+
+def create_schedule(payload: dict) -> None:
+    """Create a schedule from a dict payload."""
+    metadata = run_async(get_schedule_service().create(payload))
+    console.print(
+        f"[green]Created[/green] schedule [bold]{metadata.schedule_id}[/bold] "
+        f"(next {metadata.next_run_at})"
+    )
+
+
+def update_schedule(
+    schedule_id: str,
+    *,
+    when: str | None = None,
+    flow_id: str | None = None,
+    name: str | None = None,
+) -> None:
+    """Patch when/flow/name on an existing schedule."""
+    prior = run_async(get_schedule_service().get(schedule_id))
+    payload = prior.model_dump(mode="json", by_alias=True)
+    if when is not None:
+        payload["when"] = when
+    if flow_id is not None:
+        payload["flow_id"] = flow_id
+    if name is not None:
+        payload["name"] = name
+    metadata = run_async(get_schedule_service().update(payload))
+    console.print(
+        f"[cyan]Updated[/cyan] schedule [bold]{metadata.schedule_id}[/bold] "
+        f"(next {metadata.next_run_at})"
+    )
 
 
 def watch_runs(run_id: str | None = None, *, interval: float = 1.0) -> None:

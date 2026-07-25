@@ -36,6 +36,7 @@ Prefer the commands documented in [AGENTS.md](../../AGENTS.md) and
 | --- | --- | --- |
 | `NAVBE_DB_PATH` | SQLite control-plane path | `<data-home>/navbe.db` |
 | `NAVBE_FLOWS_DIR` | Flow definitions directory | `<data-home>/navbe_flows` |
+| `NAVBE_SCHEDULES_DIR` | Schedule definitions directory | `<data-home>/navbe_schedules` |
 | `NAVBE_CREDENTIALS_PATH` | Local credentials JSON | `<data-home>/navbe_credentials.json` |
 | `NAVBE_SYNC_CONFIG_PATH` | GitHub sync config JSON | `<data-home>/navbe_sync.json` |
 | `NAVBE_GITHUB_OAUTH_PATH` | Managed GitHub App token JSON | `<data-home>/navbe_github_oauth.json` |

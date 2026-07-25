@@ -10,6 +10,7 @@ from navbe.domains.execution.models import RunDetail
 from navbe.domains.execution.service import RunService
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
+from navbe.domains.schedules.service import ScheduleService
 from navbe.domains.secrets.service import SecretsService
 from navbe.domains.sync.github_auth import GitHubAuthService
 from navbe.domains.sync.service import SyncService
@@ -34,8 +35,9 @@ def register_tools(
     secrets_service: SecretsService,
     sync_service: SyncService,
     github_auth_service: GitHubAuthService,
+    schedule_service: ScheduleService | None = None,
 ) -> None:
-    """Register flow_*, catalog_*, secret_*, auth_*, and sync_* tools on ``mcp``.
+    """Register flow_*, schedule_*, catalog_*, secret_*, auth_*, and sync_* tools.
 
     Underscored names (not dotted) so clients like Claude accept them:
     ``^[a-zA-Z0-9_-]{1,64}$``.
@@ -233,6 +235,16 @@ def register_tools(
         runs = await run_service.list_runs(flow_id)
         return {"runs": [run.model_dump(mode="json") for run in runs]}
 
+    @mcp.tool(name="flow_cancel")
+    @mcp_tool_error_handler
+    async def flow_cancel(run_id: str) -> dict:
+        """Cancel an active run (pending/running/paused). Returns final state."""
+        state = await run_service.cancel(run_id)
+        return state.model_dump(mode="json")
+
+    if schedule_service is not None:
+        _register_schedule_tools(mcp, schedule_service, run_service)
+
     @mcp.tool(name="auth_github_begin")
     @mcp_tool_error_handler
     async def auth_github_begin() -> dict:
@@ -360,3 +372,64 @@ def register_tools(
         """Pull workspace assets from GitHub into Navbe (ff-only)."""
         result = await sync_service.pull()
         return result.model_dump()
+
+
+def _register_schedule_tools(
+    mcp: FastMCP,
+    schedule_service: ScheduleService,
+    run_service: RunService,
+) -> None:
+    """Register schedule_* MCP tools."""
+
+    @mcp.tool(name="schedule_create")
+    @mcp_tool_error_handler
+    async def schedule_create(spec: dict) -> dict:
+        """Create a schedule. ``when``: ``+30s`` / ``+1h`` / 5-field cron.
+
+        Fires only while ``navbe serve`` is running. Optional ``notify`` email
+        via Resend (``api_key`` must be ``{\"$secret\": \"KEY\"}``).
+        """
+        metadata = await schedule_service.create(spec)
+        return metadata.model_dump(mode="json")
+
+    @mcp.tool(name="schedule_get")
+    @mcp_tool_error_handler
+    async def schedule_get(schedule_id: str) -> dict:
+        """Return one schedule document including next_run_at and failure counters."""
+        schedule = await schedule_service.get(schedule_id)
+        return schedule.model_dump(mode="json", by_alias=True)
+
+    @mcp.tool(name="schedule_list")
+    @mcp_tool_error_handler
+    async def schedule_list() -> dict:
+        """List all schedules (id, flow, when, enabled, next_run_at)."""
+        items = await schedule_service.list()
+        return {"schedules": [item.model_dump(mode="json") for item in items]}
+
+    @mcp.tool(name="schedule_update")
+    @mcp_tool_error_handler
+    async def schedule_update(spec: dict) -> dict:
+        """Overwrite an existing schedule (recomputes next_run_at when when changes)."""
+        metadata = await schedule_service.update(spec)
+        return metadata.model_dump(mode="json")
+
+    @mcp.tool(name="schedule_enable")
+    @mcp_tool_error_handler
+    async def schedule_enable(schedule_id: str) -> dict:
+        """Enable a schedule and refresh next_run_at from now."""
+        schedule = await schedule_service.enable(schedule_id)
+        return schedule.model_dump(mode="json", by_alias=True)
+
+    @mcp.tool(name="schedule_disable")
+    @mcp_tool_error_handler
+    async def schedule_disable(schedule_id: str) -> dict:
+        """Disable a schedule so it no longer fires."""
+        schedule = await schedule_service.disable(schedule_id)
+        return schedule.model_dump(mode="json", by_alias=True)
+
+    @mcp.tool(name="schedule_list_runs")
+    @mcp_tool_error_handler
+    async def schedule_list_runs(schedule_id: str | None = None) -> dict:
+        """List runs triggered by schedules (optionally filter by schedule_id)."""
+        runs = await run_service.list_schedule_runs(schedule_id)
+        return {"runs": [run.model_dump(mode="json") for run in runs]}

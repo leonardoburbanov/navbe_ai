@@ -20,11 +20,15 @@ from navbe.domains.execution.repository import FileSystemRunRepository
 from navbe.domains.execution.service import RunService, resolve_connector_configs
 from navbe.domains.flows.repository import FileSystemFlowRepository
 from navbe.domains.flows.service import FlowService
+from navbe.domains.schedules.loop import SchedulerLoop
+from navbe.domains.schedules.notifier import ResendFailureNotifier
+from navbe.domains.schedules.repository import FileSystemScheduleRepository
+from navbe.domains.schedules.service import ScheduleService
 from navbe.domains.secrets.json_file import JsonFileSecretsProvider
 from navbe.domains.secrets.service import SecretsService
 from navbe.domains.steps.implementations.llm_call import AnthropicClient
 from navbe.domains.steps.registry import StepRegistry
-from navbe.domains.sync.assets import FlowsAsset
+from navbe.domains.sync.assets import FlowsAsset, SchedulesAsset
 from navbe.domains.sync.github_auth import GitHubAuthService
 from navbe.domains.sync.oauth_store import GitHubOAuthStore
 from navbe.domains.sync.service import SyncService
@@ -77,6 +81,26 @@ def get_flow_service() -> FlowService:
 
 
 @lru_cache
+def get_schedule_repository() -> FileSystemScheduleRepository:
+    """Return the shared filesystem schedule repository."""
+    settings = get_settings()
+    return FileSystemScheduleRepository(
+        schedules_dir=settings.schedules_dir,
+        session_factory=get_session_factory(),
+    )
+
+
+@lru_cache
+def get_schedule_service() -> ScheduleService:
+    """Return the schedule service singleton."""
+    return ScheduleService(
+        get_schedule_repository(),
+        get_flow_service(),
+        notifier=ResendFailureNotifier(get_secrets_service()),
+    )
+
+
+@lru_cache
 def get_github_oauth_store() -> GitHubOAuthStore:
     """Return the managed GitHub App token store."""
     settings = get_settings()
@@ -99,13 +123,20 @@ def get_sync_service() -> SyncService:
     """Return the workspace GitHub sync service (GitHub App–backed)."""
     settings = get_settings()
     flow_repo = get_flow_repository()
+    schedule_repo = get_schedule_repository()
     return SyncService(
         config_path=settings.sync_config_path,
         flows_dir=settings.flows_dir,
         flow_repository=flow_repo,
         oauth_store=get_github_oauth_store(),
         auth_service=get_github_auth_service(),
-        assets=[FlowsAsset(flows_dir=settings.flows_dir, flow_repository=flow_repo)],
+        assets=[
+            FlowsAsset(flows_dir=settings.flows_dir, flow_repository=flow_repo),
+            SchedulesAsset(
+                schedules_dir=settings.schedules_dir,
+                schedule_repository=schedule_repo,
+            ),
+        ],
     )
 
 
@@ -133,11 +164,19 @@ def get_run_service() -> RunService:
         get_flow_spec=flow_service.get,
         llm_client=AnthropicClient(get_secrets_service()),
     )
-    return RunService(
+    run_service = RunService(
         engine=engine,
         flow_service=flow_service,
         connector_service=connector_service,
     )
+    run_service.set_on_settled(get_schedule_service().on_run_settled)
+    return run_service
+
+
+@lru_cache
+def get_scheduler_loop() -> SchedulerLoop:
+    """Return the serve-only scheduler tick loop."""
+    return SchedulerLoop(get_schedule_service(), get_run_service())
 
 
 @lru_cache
@@ -149,10 +188,13 @@ def get_catalog_service() -> CatalogService:
 def clear_dependency_caches() -> None:
     """Clear all provider caches (for test isolation)."""
     get_catalog_service.cache_clear()
+    get_scheduler_loop.cache_clear()
     get_sync_service.cache_clear()
     get_github_auth_service.cache_clear()
     get_github_oauth_store.cache_clear()
     get_run_service.cache_clear()
+    get_schedule_service.cache_clear()
+    get_schedule_repository.cache_clear()
     get_flow_service.cache_clear()
     get_flow_repository.cache_clear()
     get_connector_service.cache_clear()

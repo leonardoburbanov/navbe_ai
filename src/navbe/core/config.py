@@ -23,6 +23,11 @@ def _default_flows_dir() -> Path:
     return default_data_home() / "navbe_flows"
 
 
+def _default_schedules_dir() -> Path:
+    """Schedules directory under the active data home."""
+    return default_data_home() / "navbe_schedules"
+
+
 def _default_credentials_path() -> Path:
     """Credentials JSON under the active data home."""
     return default_data_home() / "navbe_credentials.json"
@@ -50,6 +55,7 @@ class Settings(BaseSettings):
 
     db_path: Path = Field(default_factory=_default_db_path)
     flows_dir: Path = Field(default_factory=_default_flows_dir)
+    schedules_dir: Path = Field(default_factory=_default_schedules_dir)
     credentials_path: Path = Field(default_factory=_default_credentials_path)
     sync_config_path: Path = Field(default_factory=_default_sync_config_path)
     github_oauth_path: Path = Field(default_factory=_default_github_oauth_path)

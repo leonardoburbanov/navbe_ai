@@ -42,6 +42,11 @@ Do **not** invent step_type or connector type strings — only use catalog keys.
 8. Use `wait=false` only for long fire-and-forget runs; then poll
    `flow_status` and still show `diagram` when terminal.
 9. Optional: `flow_list_runs` for history.
+10. Optional: `flow_cancel` to stop an active run.
+11. Schedules (time-based): `schedule_create` / `schedule_list` / `schedule_enable` /
+    `schedule_disable`. **Fires only while `navbe serve` is running** — stdio MCP
+    can CRUD schedules but the tick loop lives in serve. Single-flight: a new start
+    is rejected while the flow has an active run (cancel first).
 
 ## FlowSpec shape (minimal)
 
@@ -115,12 +120,17 @@ from that file — not from env. Use `secret_hint` / `secret_list` for masked pr
 | `flow_status` | Poll run (includes `steps` + Mermaid `diagram`) |
 | `flow_resume` | Continue after approval (same enriched shape) |
 | `flow_list_runs` | Run history for one flow |
+| `flow_cancel` | Cancel an active run |
+| `schedule_create` / `schedule_get` / `schedule_list` / `schedule_update` | Schedule CRUD |
+| `schedule_enable` / `schedule_disable` | Toggle schedule |
+| `schedule_list_runs` | Runs triggered by schedules |
 | `sync_connect` / `sync_configure` / `sync_init` / `sync_status` | Bind a GitHub workspace repo |
 | `sync_branch_create` / `sync_checkout` | Branching |
-| `sync_push` / `sync_pull` | Push/pull workspace assets (flows today) |
+| `sync_push` / `sync_pull` | Push/pull workspace assets (flows + schedules) |
 
 GitHub sync never touches runs, credentials, OAuth tokens, archives, or Python step source.
-Repo layout: `flows/<flow_id>/flow.json` (connectors/destinations/schedules reserved).
+Repo layout: `flows/<flow_id>/flow.json`, `schedules/<schedule_id>/schedule.json`
+(connectors/destinations reserved).
 
 ## Optional resources (if your client supports them)
 

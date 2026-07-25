@@ -15,6 +15,12 @@ class RunStatus(StrEnum):
     PAUSED = "paused"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+ACTIVE_RUN_STATUSES: frozenset[RunStatus] = frozenset(
+    {RunStatus.PENDING, RunStatus.RUNNING, RunStatus.PAUSED}
+)
 
 
 class NodeTrace(BaseModel):
@@ -38,6 +44,8 @@ class RunState(BaseModel):
     node_outputs: dict[str, Any] = {}
     current_node: str | None = None
     error: str | None = None
+    trigger: Literal["manual", "schedule"] = "manual"
+    schedule_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

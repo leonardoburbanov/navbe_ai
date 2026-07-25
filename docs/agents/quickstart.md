@@ -37,6 +37,7 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 | `src/navbe/domains/connectors/` | Standalone connector contracts, registry, service, HTTP implementation |
 | `src/navbe/domains/secrets/` | Env-backed secret refs for connector configs |
 | `src/navbe/domains/flows/` | FlowSpec models, graph validation, filesystem + SQLite persistence |
+| `src/navbe/domains/schedules/` | ScheduleSpec, when parser, tick loop (serve), failure notify |
 | `src/navbe/domains/` | Other domains arrive in later EPICs |
 | `src/navbe/api/` | FastAPI surface |
 | `src/navbe/mcp_app/` | FastMCP tools / resources |

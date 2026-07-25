@@ -10,7 +10,7 @@ import typer
 from rich.console import Console
 
 from navbe import __version__
-from navbe.cli import flows, github_app, mcp, runs, secret, steps, sync
+from navbe.cli import flows, github_app, mcp, runs, schedules, secret, steps, sync
 from navbe.cli.info import info_cmd
 from navbe.cli.interactive import run_session, should_start_interactive
 from navbe.cli.login import login_app, logout_app
@@ -33,6 +33,7 @@ app = typer.Typer(
 app.add_typer(secret.app, name="secret")
 app.add_typer(sync.app, name="sync")
 app.add_typer(flows.app, name="flows")
+app.add_typer(schedules.app, name="schedules")
 app.add_typer(runs.app, name="runs")
 app.add_typer(steps.app, name="steps")
 app.add_typer(mcp.app, name="mcp")

@@ -10,6 +10,7 @@ from rich.table import Table
 
 from navbe.domains.execution.models import RunState, RunStatus, StepExecution
 from navbe.domains.flows.models import FlowMetadata
+from navbe.domains.schedules.models import ScheduleMetadata, ScheduleSpec
 from navbe.domains.sync.models import SyncResult, SyncStatus
 
 console = Console()
@@ -20,6 +21,7 @@ _STATUS_STYLE = {
     RunStatus.PAUSED: "yellow",
     RunStatus.COMPLETED: "green",
     RunStatus.FAILED: "red",
+    RunStatus.CANCELLED: "magenta",
 }
 
 _STEP_STATUS_STYLE = {
@@ -100,6 +102,44 @@ def print_flows_table(flows: list[FlowMetadata]) -> None:
         console.print("[dim]No flows found.[/dim]")
     else:
         console.print(table)
+
+
+def print_schedules_table(schedules: list[ScheduleMetadata]) -> None:
+    """Print schedules as a table."""
+    if not schedules:
+        console.print("[dim]No schedules found.[/dim]")
+        return
+    table = Table(title="Schedules")
+    table.add_column("schedule_id", overflow="fold")
+    table.add_column("flow_id", overflow="fold")
+    table.add_column("when")
+    table.add_column("enabled")
+    table.add_column("next_run_at")
+    for item in schedules:
+        table.add_row(
+            item.schedule_id,
+            item.flow_id,
+            item.when,
+            "yes" if item.enabled else "no",
+            _fmt_dt(item.next_run_at),
+        )
+    console.print(table)
+
+
+def print_schedule(schedule: ScheduleSpec) -> None:
+    """Print a single schedule document."""
+    console.print(f"[bold]schedule[/bold]  {schedule.schedule_id}")
+    console.print(f"[bold]flow[/bold]      {schedule.flow_id}")
+    console.print(f"[bold]when[/bold]      {schedule.when}")
+    console.print(f"[bold]enabled[/bold]   {schedule.enabled}")
+    console.print(f"[bold]next[/bold]      {_fmt_dt(schedule.next_run_at)}")
+    console.print(f"[bold]last_run[/bold]  {schedule.last_run_id or '-'}")
+    console.print(f"[bold]failures[/bold]  {schedule.consecutive_failures}")
+    if schedule.notify is not None:
+        console.print(
+            f"[bold]notify[/bold]    email → {schedule.notify.to} "
+            f"(threshold={schedule.notify.failure_threshold})"
+        )
 
 
 def build_runs_table(runs: list[RunState], *, title: str = "Run history") -> Table:

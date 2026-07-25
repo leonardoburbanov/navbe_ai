@@ -36,11 +36,12 @@ src/navbe/
   domains/          # subpackages added per EPIC (no logic in EPIC 0)
     steps/          # atomic units of work
     connectors/     # external sources (e.g. Langfuse)
-    flows/          # scheduled/composed workflows
+    flows/          # composed workflows
+    schedules/      # time-based triggers + failure notify
     execution/      # run lifecycle, modes, history
     secrets/        # credential storage/resolution
     catalog/        # discovery of connectors, destinations, flows
-    sync/           # GitHub workspace sync (flows + reserved assets; OAuth)
+    sync/           # GitHub workspace sync (flows + schedules; OAuth)
   api/              # FastAPI routes (thin; call services)
   mcp_app/          # FastMCP tools (thin; call services)
   cli/              # Human ops console (Click + Rich)
@@ -184,11 +185,11 @@ Agents operate Navbe through tools roughly in this order of use:
 
 1. Connectors — register/query external sources.
 2. Destinations — DuckDB or CSV sinks.
-3. Flows/workflows — schedule syncs (`when`: `+30s` / `+1h` / cron).
-4. Execution — `run_workflow`, recall status, list runs.
+3. Flows/workflows — compose graphs; schedule via `schedule_*` (`when`: `+30s` / `+1h` / cron).
+4. Execution — `flow_run`, `flow_status`, `flow_cancel`, list runs.
 5. Query — `query_destination` / `query_workflow_destination` (paginated SELECT).
 
-Prefer querying a synced DuckDB destination over calling the live source for analytics.
+Schedules fire only while `navbe serve` is up. Prefer querying a synced DuckDB destination over calling the live source for analytics.
 
 ---
 

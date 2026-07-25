@@ -58,3 +58,16 @@ async def resume_run(
     except NavbeError as exc:
         raise to_http_exception(exc) from exc
     return state.model_dump(mode="json")
+
+
+@router.post("/{run_id}/cancel")
+async def cancel_run(
+    run_id: str,
+    service: Annotated[RunService, Depends(get_run_service)],
+) -> dict[str, Any]:
+    """Cancel an active run."""
+    try:
+        state = await service.cancel(run_id)
+    except NavbeError as exc:
+        raise to_http_exception(exc) from exc
+    return state.model_dump(mode="json")

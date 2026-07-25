@@ -6,6 +6,7 @@ from navbe.core.config import get_settings
 from navbe.domains.catalog.service import CatalogService
 from navbe.domains.execution.service import RunService
 from navbe.domains.flows.service import FlowService
+from navbe.domains.schedules.service import ScheduleService
 from navbe.domains.secrets.service import SecretsService
 from navbe.domains.sync.github_auth import GitHubAuthService
 from navbe.domains.sync.service import SyncService
@@ -21,8 +22,9 @@ def create_mcp_server(
     secrets_service: SecretsService,
     sync_service: SyncService,
     github_auth_service: GitHubAuthService,
+    schedule_service: ScheduleService | None = None,
 ) -> FastMCP:
-    """Build a FastMCP server with flow/catalog/secret/auth/sync tools and resources."""
+    """Build a FastMCP server with flow/catalog/secret/auth/sync/schedule tools."""
     settings = get_settings()
     mcp = FastMCP(settings.mcp_server_name)
     register_tools(
@@ -33,6 +35,7 @@ def create_mcp_server(
         secrets_service=secrets_service,
         sync_service=sync_service,
         github_auth_service=github_auth_service,
+        schedule_service=schedule_service,
     )
     register_resources(
         mcp,

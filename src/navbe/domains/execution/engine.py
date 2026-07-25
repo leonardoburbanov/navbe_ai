@@ -1,5 +1,6 @@
 """LangGraph-backed execution engine."""
 
+import asyncio
 from datetime import UTC, datetime
 from typing import Any, cast
 
@@ -72,10 +73,31 @@ class LangGraphEngine:
             on_trace=on_trace,
         )
 
+    async def _load_prior_meta(self, run_id: str) -> tuple[Any, Any]:
+        """Return (trigger, schedule_id) from a prior pending state if present."""
+        try:
+            prior = await self._repository.get_state(run_id)
+            return prior.trigger, prior.schedule_id
+        except NotFoundError:
+            return "manual", None
+
     async def run(self, flow_spec: FlowSpec, run_id: str, initial_input: Any) -> RunState:
         """Compile and invoke a flow, persisting the final RunState."""
         now = datetime.now(UTC)
         self._run_flows[run_id] = flow_spec
+        trigger, schedule_id = await self._load_prior_meta(run_id)
+        await self._repository.save_state(
+            run_id,
+            RunState(
+                run_id=run_id,
+                flow_id=flow_spec.flow_id,
+                status=RunStatus.RUNNING,
+                trigger=trigger,
+                schedule_id=schedule_id,
+                created_at=now,
+                updated_at=now,
+            ),
+        )
         connectors = await self._resolve_connectors_map(flow_spec)
         graph = self._compile(flow_spec, run_id=run_id, connectors=connectors)
         # Connectors stay out of state — AsyncSqliteSaver cannot msgpack them.
@@ -105,6 +127,8 @@ class LangGraphEngine:
                     status=RunStatus.PAUSED,
                     node_outputs=final_state.get("node_outputs", {}),
                     current_node=node_id,
+                    trigger=trigger,
+                    schedule_id=schedule_id,
                     created_at=now,
                     updated_at=datetime.now(UTC),
                 )
@@ -114,15 +138,32 @@ class LangGraphEngine:
                     flow_id=flow_spec.flow_id,
                     status=RunStatus.COMPLETED,
                     node_outputs=final_state.get("node_outputs", {}),
+                    trigger=trigger,
+                    schedule_id=schedule_id,
                     created_at=now,
                     updated_at=datetime.now(UTC),
                 )
+        except asyncio.CancelledError:
+            run_state = RunState(
+                run_id=run_id,
+                flow_id=flow_spec.flow_id,
+                status=RunStatus.CANCELLED,
+                error="cancelled",
+                trigger=trigger,
+                schedule_id=schedule_id,
+                created_at=now,
+                updated_at=datetime.now(UTC),
+            )
+            await self._repository.save_state(run_id, run_state)
+            raise
         except NavbeError as exc:
             run_state = RunState(
                 run_id=run_id,
                 flow_id=flow_spec.flow_id,
                 status=RunStatus.FAILED,
                 error=exc.message,
+                trigger=trigger,
+                schedule_id=schedule_id,
                 created_at=now,
                 updated_at=datetime.now(UTC),
             )
@@ -132,6 +173,8 @@ class LangGraphEngine:
                 flow_id=flow_spec.flow_id,
                 status=RunStatus.FAILED,
                 error=str(exc),
+                trigger=trigger,
+                schedule_id=schedule_id,
                 created_at=now,
                 updated_at=datetime.now(UTC),
             )
@@ -188,6 +231,8 @@ class LangGraphEngine:
                     status=RunStatus.PAUSED,
                     node_outputs=final_state.get("node_outputs", prior.node_outputs),
                     current_node=node_id,
+                    trigger=prior.trigger,
+                    schedule_id=prior.schedule_id,
                     created_at=prior.created_at,
                     updated_at=now,
                 )
@@ -197,6 +242,8 @@ class LangGraphEngine:
                     flow_id=flow_spec.flow_id,
                     status=RunStatus.COMPLETED,
                     node_outputs=final_state.get("node_outputs", {}),
+                    trigger=prior.trigger,
+                    schedule_id=prior.schedule_id,
                     created_at=prior.created_at,
                     updated_at=now,
                 )
@@ -207,6 +254,8 @@ class LangGraphEngine:
                 status=RunStatus.FAILED,
                 error=exc.message,
                 node_outputs=prior.node_outputs,
+                trigger=prior.trigger,
+                schedule_id=prior.schedule_id,
                 created_at=prior.created_at,
                 updated_at=now,
             )
@@ -217,6 +266,8 @@ class LangGraphEngine:
                 status=RunStatus.FAILED,
                 error=str(exc),
                 node_outputs=prior.node_outputs,
+                trigger=prior.trigger,
+                schedule_id=prior.schedule_id,
                 created_at=prior.created_at,
                 updated_at=now,
             )

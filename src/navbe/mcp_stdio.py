@@ -14,10 +14,12 @@ from navbe.dependencies import (
     get_flow_service,
     get_github_auth_service,
     get_run_service,
+    get_schedule_service,
     get_secrets_service,
     get_sync_service,
 )
-from navbe.domains.flows.repository import metadata
+from navbe.domains.flows.repository import metadata as flows_metadata
+from navbe.domains.schedules.repository import metadata as schedules_metadata
 from navbe.mcp_app.server import create_mcp_server
 
 
@@ -25,7 +27,8 @@ async def _ensure_schema() -> None:
     """Create control-plane tables before accepting MCP traffic."""
     engine = get_db_engine()
     async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)
+        await conn.run_sync(flows_metadata.create_all)
+        await conn.run_sync(schedules_metadata.create_all)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -44,6 +47,7 @@ def main(argv: list[str] | None = None) -> None:
         secrets_service=get_secrets_service(),
         sync_service=get_sync_service(),
         github_auth_service=get_github_auth_service(),
+        schedule_service=get_schedule_service(),
     )
     # Verified against fastmcp 3.4.x: transport="stdio". Banner must stay off
     # so stdout remains a clean MCP JSON-RPC channel.
