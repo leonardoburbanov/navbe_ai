@@ -35,6 +35,10 @@ class RunRepository(Protocol):
         """Append a node trace line."""
         ...
 
+    async def list_traces(self, run_id: str) -> list[NodeTrace]:
+        """Load all traces for a run (execution order)."""
+        ...
+
     async def save_state(self, run_id: str, state: RunState) -> None:
         """Persist latest run state and regenerate transcript."""
         ...

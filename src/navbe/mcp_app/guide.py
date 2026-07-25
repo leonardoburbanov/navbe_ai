@@ -33,9 +33,13 @@ Do **not** invent step_type or connector type strings — only use catalog keys.
 4. **Ask the user before** `flow_run`.
 5. Poll `flow_status` with the returned `run_id` until status is
    `completed`, `failed`, or `paused`.
-6. If `paused` (approval node): ask the user, then `flow_resume` with
-   `{"approved": true}` or `{"approved": false}`.
-7. Optional: `flow_list_runs` for history.
+6. When the run is terminal (or paused), show the user the `diagram`
+   Mermaid flowchart from `flow_status` (as a mermaid fenced code block)
+   and optionally summarize `steps` (node_id / step_type / status / latency).
+7. If `paused` (approval node): ask the user, then `flow_resume` with
+   `{"approved": true}` or `{"approved": false}` — response includes the
+   same `steps` + `diagram` fields.
+8. Optional: `flow_list_runs` for history.
 
 ## FlowSpec shape (minimal)
 
@@ -106,8 +110,8 @@ from that file — not from env. Use `secret_hint` / `secret_list` for masked pr
 | `flow_validate` | Cheap check before save |
 | `flow_create` / `flow_update` | Persist |
 | `flow_run` | Start (ask user first) |
-| `flow_status` | Poll run |
-| `flow_resume` | Continue after approval |
+| `flow_status` | Poll run (includes `steps` + Mermaid `diagram`) |
+| `flow_resume` | Continue after approval (same enriched shape) |
 | `flow_list_runs` | Run history for one flow |
 | `sync_connect` / `sync_configure` / `sync_init` / `sync_status` | Bind a GitHub workspace repo |
 | `sync_branch_create` / `sync_checkout` | Branching |

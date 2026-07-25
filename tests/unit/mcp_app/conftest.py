@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from navbe.core.exceptions import NotFoundError
-from navbe.domains.execution.models import RunState, RunStatus
+from navbe.domains.execution.models import RunDetail, RunState, RunStatus
 from navbe.domains.flows.models import FlowMetadata, FlowSpec
 from navbe.domains.flows.validator import ValidationResult
 
@@ -146,6 +146,15 @@ class FakeRunService:
         if run_id not in self.states:
             raise NotFoundError(f"Run '{run_id}' not found", details={"run_id": run_id})
         return self.states[run_id]
+
+    async def detail(self, run_id: str) -> RunDetail:
+        """Return RunDetail with empty steps/diagram (unit fakes)."""
+        state = await self.status(run_id)
+        return RunDetail(
+            state=state,
+            steps=[],
+            diagram="flowchart TD\n  placeholder[\"(no traces in fake)\"]\n",
+        )
 
     async def resume(self, run_id: str, decision: dict) -> RunState:
         if self.resume_error is not None:

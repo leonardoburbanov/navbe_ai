@@ -65,9 +65,10 @@ def _cmd_watch(args: list[str]) -> None:
 
 def _cmd_status(args: list[str]) -> None:
     if not args:
-        console.print("[red]Usage:[/red] /status <run_id>")
+        console.print("[red]Usage:[/red] /status <run_id> [--diagram]")
         return
-    show_run_status(args[0])
+    run_id = args[0]
+    show_run_status(run_id, diagram="--diagram" in args)
 
 
 def _cmd_steps(_args: list[str]) -> None:
@@ -100,7 +101,7 @@ COMMANDS: list[SlashCommand] = [
     SlashCommand("flows", "List all flows", _cmd_flows),
     SlashCommand("runs", "List all runs (optional: /runs <flow_id>)", _cmd_runs),
     SlashCommand("watch", "Live watch all runs (or /watch <run_id>)", _cmd_watch),
-    SlashCommand("status", "One-shot run status (/status <run_id>)", _cmd_status),
+    SlashCommand("status", "Run status + steps (/status <run_id> [--diagram])", _cmd_status),
     SlashCommand("steps", "List step types", _cmd_steps),
     SlashCommand("secrets", "List secret keys (never values)", _cmd_secrets),
     SlashCommand("sync", "Sync status", _cmd_sync),

@@ -12,7 +12,9 @@ from navbe.cli.format import (
     build_runs_table,
     console,
     print_flows_table,
+    print_run_diagram,
     print_run_state,
+    print_run_steps,
     print_runs_table,
     print_steps_table,
     print_sync_status,
@@ -60,10 +62,14 @@ def list_runs(flow_id: str | None = None) -> None:
     print_runs_table(runs)
 
 
-def show_run_status(run_id: str) -> None:
-    """Print one-shot status for a run."""
-    state = run_async(get_run_service().status(run_id))
-    print_run_state(state)
+def show_run_status(run_id: str, *, diagram: bool = False) -> None:
+    """Print status and executed steps for a run."""
+    detail = run_async(get_run_service().detail(run_id))
+    print_run_state(detail.state)
+    console.print()
+    print_run_steps(detail.steps)
+    if diagram:
+        print_run_diagram(detail.diagram)
 
 
 def watch_runs(run_id: str | None = None, *, interval: float = 1.0) -> None:

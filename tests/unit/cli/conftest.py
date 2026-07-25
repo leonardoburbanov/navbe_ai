@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from navbe.domains.execution.models import RunState, RunStatus
+from navbe.domains.execution.models import RunDetail, RunState, RunStatus
 from navbe.domains.sync.models import SyncConfig, SyncResult, SyncStatus
 
 
@@ -218,6 +218,11 @@ class FakeRunService:
         self._polls += 1
         self._complete_running_if(self._polls >= 2)
         return self._runs[run_id]
+
+    async def detail(self, run_id: str) -> RunDetail:
+        """Return RunDetail wrapping status (empty steps for unit fakes)."""
+        state = await self.status(run_id)
+        return RunDetail(state=state, steps=[], diagram="flowchart TD\n")
 
     async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
         self._list_polls += 1

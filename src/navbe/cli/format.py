@@ -8,7 +8,7 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 
-from navbe.domains.execution.models import RunState, RunStatus
+from navbe.domains.execution.models import RunState, RunStatus, StepExecution
 from navbe.domains.flows.models import FlowMetadata
 from navbe.domains.sync.models import SyncResult, SyncStatus
 
@@ -20,6 +20,12 @@ _STATUS_STYLE = {
     RunStatus.PAUSED: "yellow",
     RunStatus.COMPLETED: "green",
     RunStatus.FAILED: "red",
+}
+
+_STEP_STATUS_STYLE = {
+    "completed": "green",
+    "failed": "red",
+    "paused": "yellow",
 }
 
 
@@ -41,6 +47,39 @@ def print_run_state(state: RunState) -> None:
     if state.error:
         console.print(f"[bold red]error[/bold red]   {state.error}")
     console.print(f"[bold]updated[/bold] {_fmt_dt(state.updated_at)}")
+
+
+def print_run_steps(steps: list[StepExecution]) -> None:
+    """Print executed steps as a steps-style Rich table."""
+    table = Table(title="Run steps")
+    table.add_column("node_id", overflow="fold")
+    table.add_column("step_type")
+    table.add_column("status")
+    table.add_column("latency_ms", justify="right")
+    table.add_column("error", overflow="fold")
+    if not steps:
+        console.print("[dim]No step traces yet.[/dim]")
+        return
+    for step in steps:
+        style = _STEP_STATUS_STYLE.get(step.status, "")
+        latency = f"{step.latency_ms:.1f}" if step.latency_ms is not None else "-"
+        table.add_row(
+            step.node_id,
+            step.step_type,
+            f"[{style}]{step.status}[/{style}]",
+            latency,
+            step.error or "-",
+        )
+    console.print(table)
+
+
+def print_run_diagram(diagram: str) -> None:
+    """Print a Mermaid diagram in a fenced block for copy/paste."""
+    console.print()
+    console.print("[dim]Mermaid diagram (paste into a Mermaid-capable viewer):[/dim]")
+    console.print("```mermaid")
+    console.print(diagram.rstrip())
+    console.print("```")
 
 
 def print_flows_table(flows: list[FlowMetadata]) -> None:

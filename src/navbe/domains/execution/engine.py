@@ -10,7 +10,7 @@ from langgraph.types import Command
 from navbe.core.exceptions import ExecutionError, NavbeError, NotFoundError
 from navbe.domains.execution.graph_compiler import compile_flow
 from navbe.domains.execution.interfaces import RunRepository
-from navbe.domains.execution.models import RunState, RunStatus
+from navbe.domains.execution.models import NodeTrace, RunState, RunStatus
 from navbe.domains.flows.models import FlowSpec
 
 
@@ -49,16 +49,35 @@ class LangGraphEngine:
             return {}
         return await self._resolve_connectors(flow_spec)
 
+    async def _on_trace(self, run_id: str, trace: NodeTrace) -> None:
+        """Persist one node trace for ``run_id``."""
+        await self._repository.save_trace(run_id, trace)
+
+    def _compile(
+        self,
+        flow_spec: FlowSpec,
+        *,
+        run_id: str,
+        connectors: dict[str, Any],
+    ) -> Any:
+        """Compile a flow with connectors and trace callback for this run."""
+
+        async def on_trace(trace: NodeTrace) -> None:
+            await self._on_trace(run_id, trace)
+
+        return compile_flow(
+            flow_spec,
+            llm_client=self._llm_client,
+            connectors=connectors,
+            on_trace=on_trace,
+        )
+
     async def run(self, flow_spec: FlowSpec, run_id: str, initial_input: Any) -> RunState:
         """Compile and invoke a flow, persisting the final RunState."""
         now = datetime.now(UTC)
         self._run_flows[run_id] = flow_spec
         connectors = await self._resolve_connectors_map(flow_spec)
-        graph = compile_flow(
-            flow_spec,
-            llm_client=self._llm_client,
-            connectors=connectors,
-        )
+        graph = self._compile(flow_spec, run_id=run_id, connectors=connectors)
         # Connectors stay out of state — AsyncSqliteSaver cannot msgpack them.
         initial_state = {
             "node_outputs": {},
@@ -146,11 +165,7 @@ class LangGraphEngine:
             )
         flow_spec = await self._get_flow_spec_for_run(run_id)
         connectors = await self._resolve_connectors_map(flow_spec)
-        graph = compile_flow(
-            flow_spec,
-            llm_client=self._llm_client,
-            connectors=connectors,
-        )
+        graph = self._compile(flow_spec, run_id=run_id, connectors=connectors)
         now = datetime.now(UTC)
 
         try:

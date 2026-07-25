@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -40,3 +40,21 @@ class RunState(BaseModel):
     error: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class StepExecution(BaseModel):
+    """Agent/CLI-facing summary of one executed (or paused) node."""
+
+    node_id: str
+    step_type: str
+    status: Literal["completed", "failed", "paused"]
+    latency_ms: float | None = None
+    error: str | None = None
+
+
+class RunDetail(BaseModel):
+    """Run state plus step timeline and Mermaid diagram."""
+
+    state: RunState
+    steps: list[StepExecution]
+    diagram: str

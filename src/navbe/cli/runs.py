@@ -28,9 +28,13 @@ def runs_list(
 @handle_navbe_errors
 def runs_status(
     run_id: Annotated[str, typer.Argument(help="Run id to inspect.")],
+    diagram: Annotated[
+        bool,
+        typer.Option("--diagram", help="Also print Mermaid flowchart."),
+    ] = False,
 ) -> None:
-    """Show current status for one run."""
-    show_run_status(run_id)
+    """Show status and executed steps for one run."""
+    show_run_status(run_id, diagram=diagram)
 
 
 @app.command("watch")

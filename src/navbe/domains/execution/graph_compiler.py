@@ -1,5 +1,7 @@
 """Compile a FlowSpec into a LangGraph StateGraph."""
 
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import Any, cast
 
 from langgraph.graph import END, START, StateGraph
@@ -7,11 +9,16 @@ from langgraph.types import interrupt
 from typing_extensions import TypedDict
 
 from navbe.core.exceptions import ExecutionError, NavbeError, NotFoundError
+from navbe.domains.execution.models import NodeTrace
 from navbe.domains.flows.models import FlowSpec, NodeSpec
 from navbe.domains.steps.interfaces import StepContext
 from navbe.domains.steps.registry import StepRegistry
 
 APPROVAL_STEP_TYPE = "approval"
+
+# ponytail: callback closed over at compile — upgrade: RunnableConfig if traces
+# need to survive checkpoint rematerialization without re-compile.
+OnTrace = Callable[[NodeTrace], Awaitable[None]]
 
 
 class FlowGraphState(TypedDict):
@@ -30,10 +37,39 @@ def _apply_set_var(flow_vars: dict[str, Any], result: Any) -> dict[str, Any]:
     return updated
 
 
-def _make_approval_node(node: NodeSpec):
+async def _emit_trace(
+    on_trace: OnTrace | None,
+    *,
+    node_id: str,
+    input_data: Any,
+    started_at: datetime,
+    output: Any = None,
+    error: str | None = None,
+) -> None:
+    """Build and optionally persist a NodeTrace."""
+    if on_trace is None:
+        return
+    finished_at = datetime.now(UTC)
+    latency_ms = (finished_at - started_at).total_seconds() * 1000.0
+    await on_trace(
+        NodeTrace(
+            node_id=node_id,
+            input=input_data,
+            output=output,
+            error=error,
+            started_at=started_at,
+            finished_at=finished_at,
+            latency_ms=latency_ms,
+        )
+    )
+
+
+def _make_approval_node(node: NodeSpec, *, on_trace: OnTrace | None = None):
     """Build a HITL approval node that calls langgraph.interrupt."""
 
     async def approval_node_fn(state: FlowGraphState) -> dict[str, Any]:
+        started_at = datetime.now(UTC)
+        input_data = state["current_input"]
         decision = interrupt(
             {
                 "node_id": node.id,
@@ -41,10 +77,25 @@ def _make_approval_node(node: NodeSpec):
             }
         )
         if not isinstance(decision, dict) or not decision.get("approved", False):
+            msg = f"Run halted: node '{node.id}' was not approved"
+            await _emit_trace(
+                on_trace,
+                node_id=node.id,
+                input_data=input_data,
+                started_at=started_at,
+                error=msg,
+            )
             raise ExecutionError(
-                f"Run halted: node '{node.id}' was not approved",
+                msg,
                 details={"node_id": node.id},
             )
+        await _emit_trace(
+            on_trace,
+            node_id=node.id,
+            input_data=input_data,
+            started_at=started_at,
+            output=decision,
+        )
         return {
             "node_outputs": {**state["node_outputs"], node.id: decision},
             "current_input": decision,
@@ -60,6 +111,7 @@ def _make_step_node(
     *,
     llm_client: Any | None = None,
     connectors: dict[str, Any] | None = None,
+    on_trace: OnTrace | None = None,
 ):
     """Build a generic StepRegistry-backed node function."""
     # ponytail: connectors closed over (not in state) — upgrade: RunnableConfig
@@ -67,13 +119,15 @@ def _make_step_node(
     resolved_connectors = connectors or {}
 
     async def node_fn(state: FlowGraphState) -> dict[str, Any]:
+        started_at = datetime.now(UTC)
+        input_data = state["current_input"]
         if node.step_type == "llm_call" and llm_client is not None:
             step_instance = step_cls(node.config, client=llm_client)
         else:
             step_instance = step_cls(node.config)
         ctx = StepContext(
             node_id=node.id,
-            input_data=state["current_input"],
+            input_data=input_data,
             flow_vars={
                 **state["flow_vars"],
                 "connectors": resolved_connectors,
@@ -82,13 +136,35 @@ def _make_step_node(
         )
         try:
             result = await step_instance.run(ctx)
-        except NavbeError:
+        except NavbeError as exc:
+            await _emit_trace(
+                on_trace,
+                node_id=node.id,
+                input_data=input_data,
+                started_at=started_at,
+                error=exc.message,
+            )
             raise
         except Exception as exc:
+            msg = f"Node '{node.id}' failed: {exc}"
+            await _emit_trace(
+                on_trace,
+                node_id=node.id,
+                input_data=input_data,
+                started_at=started_at,
+                error=msg,
+            )
             raise ExecutionError(
-                f"Node '{node.id}' failed: {exc}",
+                msg,
                 details={"node_id": node.id},
             ) from exc
+        await _emit_trace(
+            on_trace,
+            node_id=node.id,
+            input_data=input_data,
+            started_at=started_at,
+            output=result,
+        )
         return {
             "node_outputs": {**state["node_outputs"], node.id: result},
             "current_input": result,
@@ -103,6 +179,7 @@ def compile_flow(
     *,
     llm_client: Any | None = None,
     connectors: dict[str, Any] | None = None,
+    on_trace: OnTrace | None = None,
 ) -> Any:
     """Compile a validated FlowSpec into an uncompiled StateGraph."""
     # cast: ty does not treat TypedDict subclasses as StateLike Protocols.
@@ -110,7 +187,7 @@ def compile_flow(
 
     for node in flow_spec.nodes:
         if node.step_type == APPROVAL_STEP_TYPE:
-            graph.add_node(node.id, _make_approval_node(node))
+            graph.add_node(node.id, _make_approval_node(node, on_trace=on_trace))
             continue
         try:
             step_cls = StepRegistry.get(node.step_type)
@@ -123,6 +200,7 @@ def compile_flow(
                 step_cls,
                 llm_client=llm_client,
                 connectors=connectors,
+                on_trace=on_trace,
             ),
         )
 

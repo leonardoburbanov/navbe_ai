@@ -13,7 +13,7 @@ from tests.unit.mcp_app.conftest import FakeRunService, make_server
 
 
 async def test_flow_status_returns_run_state_dict() -> None:
-    """Status payload matches RunState.model_dump(mode='json')."""
+    """Status payload includes RunState fields plus steps and diagram."""
     run_service = FakeRunService()
     now = datetime.now(UTC)
     state = RunState(
@@ -28,7 +28,10 @@ async def test_flow_status_returns_run_state_dict() -> None:
     server = make_server(run_service=run_service)
     async with Client(server) as client:
         result = await client.call_tool("flow_status", {"run_id": "r1"})
-    assert result.data == state.model_dump(mode="json")
+    expected = state.model_dump(mode="json")
+    expected["steps"] = []
+    expected["diagram"] = "flowchart TD\n  placeholder[\"(no traces in fake)\"]\n"
+    assert result.data == expected
 
 
 async def test_flow_status_unknown_run_id_returns_structured_error() -> None:

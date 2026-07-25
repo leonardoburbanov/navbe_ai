@@ -112,8 +112,10 @@ Legacy `NAVBE_GITHUB_OAUTH_CLIENT_ID` is still read as a fallback.
 `RunService` loads a `FlowSpec`, compiles it via `compile_flow`, and runs it
 through `LangGraphEngine` (`AsyncSqliteSaver` checkpoints). Per-run artifacts
 live under `{runs_dir}/{flow_id}/{run_id}/` (`state.json`, `trace.jsonl`,
-`transcript.md`). Reserved step type `approval` pauses via LangGraph
-`interrupt`; `resume` continues with `Command(resume=decision)`.
+`transcript.md`). Node wrappers write `NodeTrace` lines; MCP `flow_status` /
+`flow_resume` expose `steps` + a Mermaid `diagram`. CLI `navbe runs status`
+prints a steps table (`--diagram` for Mermaid). Reserved step type `approval`
+pauses via LangGraph `interrupt`; `resume` continues with `Command(resume=decision)`.
 
 Conditional edges match `node_outputs[source]["route"]` to `edge.condition`
 (same convention as `RouterStep`).

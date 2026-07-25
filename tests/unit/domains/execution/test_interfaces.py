@@ -18,6 +18,9 @@ class FakeRunRepository:
     async def save_trace(self, run_id: str, trace: NodeTrace) -> None:
         self.traces.setdefault(run_id, []).append(trace)
 
+    async def list_traces(self, run_id: str) -> list[NodeTrace]:
+        return list(self.traces.get(run_id, []))
+
     async def save_state(self, run_id: str, state: RunState) -> None:
         self.states[run_id] = state
 

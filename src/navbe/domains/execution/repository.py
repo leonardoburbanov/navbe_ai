@@ -102,6 +102,11 @@ class FileSystemRunRepository:
         async with aiofiles.open(path, "a", encoding="utf-8") as handle:
             await handle.write(trace.model_dump_json() + "\n")
 
+    async def list_traces(self, run_id: str) -> list[NodeTrace]:
+        """Load all traces for ``run_id`` in append order."""
+        flow_id = await self._resolve_flow_id(run_id)
+        return await self._read_traces(self._run_dir(flow_id, run_id))
+
     async def save_state(self, run_id: str, state: RunState) -> None:
         """Write state.json and regenerate transcript.md."""
         await self._remember_run(state.flow_id, run_id)

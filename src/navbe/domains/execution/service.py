@@ -6,8 +6,9 @@ from typing import Any
 from uuid import uuid4
 
 from navbe.domains.connectors.service import ConnectorService
+from navbe.domains.execution.diagram import build_step_executions, render_run_mermaid
 from navbe.domains.execution.interfaces import ExecutionEngine
-from navbe.domains.execution.models import RunState, RunStatus
+from navbe.domains.execution.models import RunDetail, RunState, RunStatus
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 
@@ -71,6 +72,26 @@ class RunService:
     async def status(self, run_id: str) -> RunState:
         """Return the latest run status."""
         return await self._engine.get_status(run_id)
+
+    async def detail(self, run_id: str) -> RunDetail:
+        """Return run state, step timeline, and Mermaid diagram."""
+        state = await self._engine.get_status(run_id)
+        flow = await self._flow_service.get(state.flow_id)
+        repo = getattr(self._engine, "repository", None)
+        traces = await repo.list_traces(run_id) if repo is not None else []
+        steps = build_step_executions(
+            flow,
+            traces,
+            status=state.status,
+            current_node=state.current_node,
+        )
+        diagram = render_run_mermaid(
+            flow,
+            traces,
+            state.status,
+            current_node=state.current_node,
+        )
+        return RunDetail(state=state, steps=steps, diagram=diagram)
 
     async def resume(self, run_id: str, decision: dict) -> RunState:
         """Resume a paused run."""
