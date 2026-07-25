@@ -44,7 +44,9 @@ Prefer the commands documented in [AGENTS.md](../../AGENTS.md) and
 | `NAVBE_GITHUB_OAUTH_CLIENT_ID` | Legacy alias for app client id | unset |
 | `NAVBE_LOG_LEVEL` | Log level | `INFO` |
 | `NAVBE_MCP_SERVER_NAME` | MCP server name | `navbe` |
-| `NAVBE_ANTHROPIC_API_KEY` | Optional Anthropic key | unset |
+
+API keys (Anthropic, Resend, CRM, …) are **not** env vars — store them in the
+credentials JSON via `navbe secret set` / MCP `secret_set`.
 
 `<data-home>` is the repo root when running from a checkout, otherwise `~/.navbe`.
 

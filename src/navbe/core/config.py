@@ -60,7 +60,6 @@ class Settings(BaseSettings):
     github_oauth_client_id: str = ""
     log_level: str = "INFO"
     mcp_server_name: str = "navbe"
-    anthropic_api_key: str | None = None
 
     @model_validator(mode="after")
     def _apply_legacy_oauth_client_id(self) -> "Settings":
