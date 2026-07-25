@@ -1,13 +1,14 @@
 """Tests for LLM call step."""
 
-import os
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from navbe.core.config import get_settings
 from navbe.core.exceptions import ExecutionError
-from navbe.domains.steps.implementations.llm_call import LLMCallStep
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
+from navbe.domains.steps.implementations.llm_call import AnthropicClient, LLMCallStep
 from navbe.domains.steps.interfaces import StepContext
 
 
@@ -67,15 +68,10 @@ async def test_no_output_schema_returns_raw_text() -> None:
     assert await step.run(StepContext(node_id="n1", input_data=None)) == "hi"
 
 
-@pytest.mark.integration
-async def test_real_anthropic_call_requires_api_key() -> None:
-    """Real network smoke test, skipped unless NAVBE_ANTHROPIC_API_KEY is set."""
-    if not os.getenv("NAVBE_ANTHROPIC_API_KEY"):
-        pytest.skip("NAVBE_ANTHROPIC_API_KEY is not set")
-
-    get_settings.cache_clear()
-    step = LLMCallStep({"prompt_template": "Reply with exactly: navbe-ok"})
-    result = await step.run(StepContext(node_id="n1", input_data=None))
-
-    assert isinstance(result, str)
-    assert result.strip()
+async def test_anthropic_client_requires_credentials_store(tmp_path: Path) -> None:
+    """AnthropicClient fails when the key is missing from the credentials file."""
+    store = JsonFileSecretsProvider(tmp_path / "creds.json")
+    client = AnthropicClient(SecretsService(store, store=store))
+    with pytest.raises(ExecutionError) as exc_info:
+        await client.complete(prompt="hi", model="claude-sonnet-4-6")
+    assert exc_info.value.details["key"] == "NAVBE_ANTHROPIC_API_KEY"

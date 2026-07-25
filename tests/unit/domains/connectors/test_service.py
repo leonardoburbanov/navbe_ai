@@ -47,6 +47,27 @@ async def test_resolve_with_real_secrets_service_replaces_ref(tmp_path) -> None:
     assert connector.config.headers == {"Authorization": "sk-123"}
 
 
+async def test_resolve_resend_api_key_from_credentials(tmp_path) -> None:
+    """Resend connector gets api_key from credentials via $secret."""
+    from navbe.domains.connectors.implementations.resend import ResendConnector
+
+    store = JsonFileSecretsProvider(tmp_path / "creds.json")
+    await store.set("RESEND_API_KEY", "re_test_key", app="resend")
+    connector = await ConnectorService(
+        secrets_service=SecretsService(store, store=store),
+    ).resolve(
+        "mail",
+        {
+            "type": "resend",
+            "config": {"api_key": {"$secret": "RESEND_API_KEY"}},
+        },
+    )
+
+    assert isinstance(connector, ResendConnector)
+    assert connector.config.api_key == "re_test_key"
+    assert connector._headers["Authorization"] == "Bearer re_test_key"
+
+
 async def test_resolve_returns_connector_instance() -> None:
     """Resolve returns a concrete connector instance."""
     connector = await ConnectorService().resolve(

@@ -5,12 +5,13 @@ from typing import Any, Protocol
 
 import httpx
 
-from navbe.core.config import get_settings
-from navbe.core.exceptions import ExecutionError
+from navbe.core.exceptions import ExecutionError, NotFoundError
 from navbe.domains.steps.implementations.http_request import resolve_templates
 from navbe.domains.steps.interfaces import StepContext
 from navbe.domains.steps.models import StepConfig
 from navbe.domains.steps.registry import StepRegistry
+
+_ANTHROPIC_SECRET_KEY = "NAVBE_ANTHROPIC_API_KEY"
 
 
 class LLMClient(Protocol):
@@ -21,17 +22,33 @@ class LLMClient(Protocol):
         ...
 
 
+class SecretResolver(Protocol):
+    """Minimal secrets lookup used by ``AnthropicClient``."""
+
+    async def resolve_ref(self, key: str) -> str:
+        """Return the plaintext value for ``key``."""
+        ...
+
+
 class AnthropicClient:
-    """Tiny Anthropic Messages API client used when no test client is injected."""
+    """Anthropic Messages API client; API key from the credentials JSON store."""
+
+    def __init__(self, secrets: SecretResolver) -> None:
+        """Bind a secrets resolver (credentials file only — never env)."""
+        self._secrets = secrets
 
     async def complete(self, *, prompt: str, model: str) -> str:
         """Call Anthropic and return the first text block."""
-        api_key = get_settings().anthropic_api_key
-        if not api_key:
+        try:
+            api_key = await self._secrets.resolve_ref(_ANTHROPIC_SECRET_KEY)
+        except NotFoundError as exc:
             raise ExecutionError(
-                "NAVBE_ANTHROPIC_API_KEY is required for LLMCallStep",
-                details={"env": "NAVBE_ANTHROPIC_API_KEY"},
-            )
+                f"{_ANTHROPIC_SECRET_KEY} not found in credentials store",
+                details={
+                    "key": _ANTHROPIC_SECRET_KEY,
+                    "hint": "navbe secret set NAVBE_ANTHROPIC_API_KEY",
+                },
+            ) from exc
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -115,9 +132,18 @@ class LLMCallStep:
     config_schema = LLMCallConfig
 
     def __init__(self, config: dict[str, Any], client: LLMClient | None = None) -> None:
-        """Validate config and store an injectable client."""
+        """Validate config and store an injectable client.
+
+        Production wires ``AnthropicClient(secrets_provider)`` via the engine.
+        Unit tests inject a fake ``LLMClient``.
+        """
         self.config = LLMCallConfig.model_validate(config)
-        self._client = client or AnthropicClient()
+        if client is None:
+            raise ExecutionError(
+                "llm_call requires an injected LLM client",
+                details={"hint": "wire AnthropicClient with the credentials store"},
+            )
+        self._client = client
 
     async def run(self, ctx: StepContext) -> Any:
         """Resolve the prompt and return raw or structured output."""

@@ -43,19 +43,17 @@ Prefer the human CLI (stores keys in `navbe_credentials.json`, never echoes full
 `secret list` / `secret hint` show a masked suffix):
 
 ```bash
-navbe secret set CRM_API_KEY
+navbe secret set CRM_API_KEY --app crm
+navbe secret set RESEND_API_KEY --app resend
 navbe secret list
 ```
 
-From a checkout you can also use `uv run navbe …`. Or use `.env` (legacy):
+From a checkout you can also use `uv run navbe …`. Connector and LLM keys are
+**not** read from `.env` — only from the credentials file via `secret_set` /
+`{"$secret": "KEY"}`.
 
-```bash
-cp .env.example .env
-# edit .env — set CRM_API_KEY (and NAVBE_ANTHROPIC_API_KEY if you want live llm_call)
-```
-
-For the automated demo fixture, a dummy `CRM_API_KEY` is enough when the fake
-sales bot is used as the CRM base URL.
+For the automated demo fixture, store a dummy `CRM_API_KEY` the same way when the
+fake sales bot is used as the CRM base URL.
 
 ### 3. Start the fake sales-bot fixture
 

@@ -17,8 +17,9 @@ Prefer **tools** over `navbe://` resources — Claude Desktop often hides resour
 1. Call `navbe_howto` if unsure of the loop.
 2. Call `catalog_steps` and `catalog_connectors` (or `catalog_full`).
 3. Call `flow_list`. Use `flow_get` before editing an existing `flow_id`.
-4. Store API keys with `secret_set` (local `navbe_credentials.json`). Use
-   `secret_list` / `secret_has` — never expect values back. Prefer this over `.env`.
+4. Store API keys with `secret_set` (local `navbe_credentials.json` only — not
+   env). Use `secret_list` / `secret_hint` / `secret_has` — never expect full
+   values back. Example: `secret_set` key `RESEND_API_KEY` with `app=resend`.
 5. GitHub workspace sync: `auth_github_begin` → show user the code →
    `auth_github_complete` (GitHub App; install if prompted), then
    `sync_connect` (or `sync_configure` + `sync_init`)
@@ -44,12 +45,10 @@ Never invent `step_type` or connector `type` strings — only catalog keys.
   "name": "optional name",
   "entry_node": "n1",
   "connectors": {
-    "api": {
-      "type": "http",
+    "mail": {
+      "type": "resend",
       "config": {
-        "base_url": "https://example.com",
-        "headers": {},
-        "timeout": 30
+        "api_key": {"$secret": "RESEND_API_KEY"}
       }
     }
   },
@@ -58,9 +57,15 @@ Never invent `step_type` or connector `type` strings — only catalog keys.
       "id": "n1",
       "step_type": "http_request",
       "config": {
-        "connector": "api",
-        "method": "get",
-        "path": "/health"
+        "connector": "mail",
+        "method": "post",
+        "path": "/emails",
+        "body_template": {
+          "from": "onboarding@resend.dev",
+          "to": ["user@example.com"],
+          "subject": "Hello",
+          "html": "<p>Hi</p>"
+        }
       }
     }
   ],
@@ -68,8 +73,9 @@ Never invent `step_type` or connector `type` strings — only catalog keys.
 }
 ```
 
-Secrets: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}` — never paste live secrets.
+Secrets: always `{"$secret": "KEY"}` in connector config — never paste live secrets.
 Store with `secret_set`; resolves from `navbe_credentials.json` only (not env).
+HTTP connectors: put `$secret` in `headers`. Resend: put `$secret` in `api_key`.
 
 ## Common step types
 

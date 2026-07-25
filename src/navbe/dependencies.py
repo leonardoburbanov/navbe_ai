@@ -22,6 +22,7 @@ from navbe.domains.flows.repository import FileSystemFlowRepository
 from navbe.domains.flows.service import FlowService
 from navbe.domains.secrets.json_file import JsonFileSecretsProvider
 from navbe.domains.secrets.service import SecretsService
+from navbe.domains.steps.implementations.llm_call import AnthropicClient
 from navbe.domains.steps.registry import StepRegistry
 from navbe.domains.sync.assets import FlowsAsset
 from navbe.domains.sync.github_auth import GitHubAuthService
@@ -130,6 +131,7 @@ def get_run_service() -> RunService:
         checkpoint_db_path=str(checkpoint_path),
         resolve_connectors=resolve_connectors,
         get_flow_spec=flow_service.get,
+        llm_client=AnthropicClient(get_secrets_service()),
     )
     return RunService(
         engine=engine,

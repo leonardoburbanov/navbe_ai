@@ -35,8 +35,8 @@ Each `src/navbe/domains/<name>/`:
 Implemented domain:
 
 - `steps` — standalone step contracts, registry, service, and built-in implementations.
-- `connectors` — standalone connector contracts, registry, service, and HTTP implementation.
-- `secrets` — env-backed secret refs consumed by connector resolution.
+- `connectors` — standalone connector contracts, registry, service, HTTP + Resend.
+- `secrets` — credentials-JSON secret refs consumed by connector resolution.
 - `flows` — FlowSpec models, graph validation, filesystem + SQLite index.
 - `execution` — FlowSpec → LangGraph compile/run, checkpoints, HITL, run transcripts.
 - `catalog` — read-only JSON Schema aggregation of steps + connectors for agents.
@@ -64,7 +64,8 @@ Built-ins registered in `StepRegistry`:
 
 Built-ins registered in `ConnectorRegistry`:
 
-- `http`
+- `http` — generic HTTP; API keys via `headers` + `{"$secret": "KEY"}`
+- `resend` — api.resend.com; `api_key: {"$secret": "RESEND_API_KEY"}`
 
 ## Secrets domain
 

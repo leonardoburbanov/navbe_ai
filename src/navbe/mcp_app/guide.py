@@ -69,8 +69,9 @@ Do **not** invent step_type or connector type strings — only use catalog keys.
 }
 ```
 
-Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
-(never put live secret values in the spec). Store keys with `secret_set`
+Secrets in connector headers: `{"Authorization": {"$secret": "CRM_API_KEY"}}`
+(never put live secret values in the spec). Resend connector:
+`{"api_key": {"$secret": "RESEND_API_KEY"}}`. Store keys with `secret_set`
 (writes `navbe_credentials.json`, optional `app` label). Secrets resolve only
 from that file — not from env. Use `secret_hint` / `secret_list` for masked previews.
 
@@ -85,7 +86,11 @@ from that file — not from env. Use `secret_hint` / `secret_list` for masked pr
 
 ## Connector types (discover via catalog_connectors)
 
-- `http` — base_url + optional headers/timeout; used by `http_request`
+- `http` — base_url + optional headers/timeout; put API keys in headers as
+  `{"Authorization": {"$secret": "CRM_API_KEY"}}` (credentials JSON only).
+- `resend` — api.resend.com; config `api_key` must be
+  `{"$secret": "RESEND_API_KEY"}` (store with `secret_set` / `--app resend`).
+  Use with `http_request` (e.g. method `post`, path `/emails`).
 
 ## Tool map
 

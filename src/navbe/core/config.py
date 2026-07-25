@@ -41,7 +41,7 @@ def _default_github_oauth_path() -> Path:
 class Settings(BaseSettings):
     """Navbe runtime settings (env prefix ``NAVBE_``)."""
 
-    # extra=ignore: connector secrets (RESEND_API_KEY, etc.) live in the same .env
+    # extra=ignore: stray connector keys in .env are ignored; use credentials JSON
     model_config = SettingsConfigDict(
         env_prefix="NAVBE_",
         env_file=".env",
