@@ -6,7 +6,8 @@ import navbe.domains.connectors.implementations  # noqa: F401
 from navbe.core.exceptions import NotFoundError
 from navbe.domains.connectors.implementations.http import HTTPConnector
 from navbe.domains.connectors.service import ConnectorService
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 
 
 def test_get_config_schema_returns_valid_json_schema() -> None:
@@ -27,11 +28,10 @@ async def test_resolve_without_secrets_service_passes_config_through() -> None:
     assert connector.config.timeout == 5
 
 
-async def test_resolve_with_real_secrets_service_replaces_ref(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_resolve_with_real_secrets_service_replaces_ref(tmp_path) -> None:
     """Real SecretsService resolves $secret refs before connector build."""
-    monkeypatch.setenv("API_KEY", "sk-123")
+    store = JsonFileSecretsProvider(tmp_path / "creds.json")
+    await store.set("API_KEY", "sk-123")
     instance_config = {
         "type": "http",
         "config": {
@@ -40,7 +40,7 @@ async def test_resolve_with_real_secrets_service_replaces_ref(
         },
     }
     connector = await ConnectorService(
-        secrets_service=SecretsService(EnvSecretsProvider()),
+        secrets_service=SecretsService(store, store=store),
     ).resolve("bot", instance_config)
 
     assert isinstance(connector, HTTPConnector)

@@ -27,7 +27,8 @@ from navbe.domains.execution.repository import FileSystemRunRepository
 from navbe.domains.execution.service import RunService, resolve_connector_configs
 from navbe.domains.flows.repository import FileSystemFlowRepository, metadata
 from navbe.domains.flows.service import FlowService
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 from navbe.mcp_app.server import create_mcp_server
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -110,8 +111,13 @@ def build_real_mcp_server(tmp_path: Path, *, llm_client: Any | None = None):
             session_factory=session_factory,
         )
     )
+    creds = JsonFileSecretsProvider(tmp_path / "creds.json")
+    (tmp_path / "creds.json").write_text(
+        '{"CRM_API_KEY": "sk-test"}\n',
+        encoding="utf-8",
+    )
     connector_service = ConnectorService(
-        secrets_service=SecretsService(EnvSecretsProvider()),
+        secrets_service=SecretsService(creds, store=creds),
     )
     run_repo = FileSystemRunRepository(
         runs_dir_for=lambda flow_id: flows_dir / flow_id / "runs",
@@ -151,10 +157,8 @@ def build_real_mcp_server(tmp_path: Path, *, llm_client: Any | None = None):
 async def test_demo_flow_against_real_sales_bot(
     tmp_path: Path,
     running_sales_bot: str,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Create + run the sales-bot fixture flow against a live local HTTP bot."""
-    monkeypatch.setenv("CRM_API_KEY", "sk-test")
     server = build_real_mcp_server(
         tmp_path,
         llm_client=FakeLLMClient(fixed_route="handle"),

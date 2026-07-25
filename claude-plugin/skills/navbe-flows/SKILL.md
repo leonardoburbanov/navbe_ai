@@ -69,7 +69,7 @@ Never invent `step_type` or connector `type` strings — only catalog keys.
 ```
 
 Secrets: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}` — never paste live secrets.
-Store with `secret_set`; resolves from credentials JSON then env.
+Store with `secret_set`; resolves from `navbe_credentials.json` only (not env).
 
 ## Common step types
 

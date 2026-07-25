@@ -70,7 +70,7 @@ async def has_secret(
     key: str,
     service: Annotated[SecretsService, Depends(get_secrets_service)],
 ) -> dict[str, Any]:
-    """Check whether a key exists in credentials file or environment."""
+    """Check whether a key exists in the credentials file."""
     try:
         present = await service.has(key)
     except NavbeError as exc:

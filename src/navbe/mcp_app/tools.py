@@ -86,7 +86,7 @@ def register_tools(
     @mcp.tool(name="secret_has")
     @mcp_tool_error_handler
     async def secret_has(key: str) -> dict:
-        """Check whether a key exists in credentials file or environment (no value)."""
+        """Check whether a key exists in the credentials file (no value)."""
         present = await secrets_service.has(key)
         return {"key": key, "present": present}
 

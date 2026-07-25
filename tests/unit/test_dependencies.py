@@ -8,7 +8,6 @@ from navbe.dependencies import (
     get_run_service,
     get_secrets_service,
 )
-from navbe.domains.secrets.service import EnvSecretsProvider
 
 
 @pytest.fixture(autouse=True)
@@ -41,10 +40,11 @@ def test_dependencies_resettable_between_tests() -> None:
     assert second_run._flow_service is second_flow
 
 
-def test_get_secrets_service_uses_env_provider() -> None:
-    """SecretsService chains JSON credentials then EnvSecretsProvider."""
-    from navbe.domains.secrets.json_file import ChainedSecretsProvider
+def test_get_secrets_service_uses_json_file_only() -> None:
+    """SecretsService resolves only from the JSON credentials file."""
+    from navbe.domains.secrets.json_file import JsonFileSecretsProvider
 
-    provider = get_secrets_service()._provider
-    assert isinstance(provider, ChainedSecretsProvider)
-    assert any(isinstance(p, EnvSecretsProvider) for p in provider._providers)
+    service = get_secrets_service()
+    assert isinstance(service._provider, JsonFileSecretsProvider)
+    assert service._store is service._provider
+

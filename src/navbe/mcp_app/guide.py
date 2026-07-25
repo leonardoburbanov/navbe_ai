@@ -14,9 +14,10 @@ Claude Desktop often does not surface resources to the model.
 1. Call tool `navbe_howto` (this text) if you are unsure.
 2. Call `catalog_steps` and `catalog_connectors` (or `catalog_full`) before authoring.
 3. Call `flow_list` to see what already exists. Use `flow_get` before editing.
-4. For connector API keys: prefer `secret_set` (local JSON credentials) over editing `.env`.
-   Pass optional `app` (e.g. `resend`). Use `secret_list` / `secret_hint` / `secret_has`
-   to inspect keys — values are never returned; list/hint show a masked suffix (`****abcd`).
+4. For connector API keys: use `secret_set` (local `navbe_credentials.json` only —
+   not env / `.env`). Pass optional `app` (e.g. `resend`). Use `secret_list` /
+   `secret_hint` / `secret_has` to inspect keys — values are never returned;
+   list/hint show a masked suffix (`****abcd`).
 5. To share workspace metadata via GitHub:
    `auth_github_begin` → show the user the code → `auth_github_complete`
    (GitHub App Device Flow; install the app if prompted), then
@@ -70,8 +71,8 @@ Do **not** invent step_type or connector type strings — only use catalog keys.
 
 Secrets in connector headers: `{"Authorization": {"$secret": "ENV_KEY_NAME"}}`
 (never put live secret values in the spec). Store keys with `secret_set`
-(writes `navbe_credentials.json`, optional `app` label); resolution order is
-credentials file, then env. Use `secret_hint` / `secret_list` for masked previews.
+(writes `navbe_credentials.json`, optional `app` label). Secrets resolve only
+from that file — not from env. Use `secret_hint` / `secret_list` for masked previews.
 
 ## Step types (discover via catalog_steps)
 

@@ -10,7 +10,6 @@ from typing import Any
 import aiofiles
 
 from navbe.core.exceptions import NotFoundError, ValidationError
-from navbe.domains.secrets.interfaces import SecretsProvider
 from navbe.domains.secrets.models import CredentialRecord, validate_app, validate_secret_key
 
 
@@ -185,32 +184,3 @@ class JsonFileSecretsProvider:
     async def list_records(self) -> dict[str, CredentialRecord]:
         """Return all stored records keyed by secret name."""
         return await self._read_records()
-
-
-class ChainedSecretsProvider:
-    """Try providers in order; first successful resolve wins."""
-
-    def __init__(self, providers: list[SecretsProvider]) -> None:
-        """Create a chain; each item must implement ``async resolve(key)``."""
-        self._providers = list(providers)
-
-    async def resolve(self, key: str) -> str:
-        """Resolve ``key`` from the first provider that has it."""
-        last_error: NotFoundError | None = None
-        for provider in self._providers:
-            try:
-                return await provider.resolve(key)
-            except NotFoundError as exc:
-                last_error = exc
-        if last_error is not None:
-            raise NotFoundError(
-                f"Secret '{key}' not found in credentials file or environment",
-                details={
-                    "key": key,
-                    "hint": "use secret_set or define it in .env / export it",
-                },
-            ) from last_error
-        raise NotFoundError(
-            f"Secret '{key}' not found",
-            details={"key": key, "hint": "no secrets providers configured"},
-        )

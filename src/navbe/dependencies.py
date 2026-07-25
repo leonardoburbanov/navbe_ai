@@ -20,8 +20,8 @@ from navbe.domains.execution.repository import FileSystemRunRepository
 from navbe.domains.execution.service import RunService, resolve_connector_configs
 from navbe.domains.flows.repository import FileSystemFlowRepository
 from navbe.domains.flows.service import FlowService
-from navbe.domains.secrets.json_file import ChainedSecretsProvider, JsonFileSecretsProvider
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 from navbe.domains.steps.registry import StepRegistry
 from navbe.domains.sync.assets import FlowsAsset
 from navbe.domains.sync.github_auth import GitHubAuthService
@@ -44,16 +44,10 @@ def get_session_factory() -> async_sessionmaker:
 
 @lru_cache
 def get_secrets_service() -> SecretsService:
-    """Return secrets service: JSON credentials file, then env fallback."""
+    """Return secrets service backed only by ``navbe_credentials.json``."""
     settings = get_settings()
     json_store = JsonFileSecretsProvider(settings.credentials_path)
-    env_provider = EnvSecretsProvider()
-    chain = ChainedSecretsProvider([json_store, env_provider])
-    return SecretsService(
-        chain,
-        store=json_store,
-        presence_checks=[json_store, env_provider],
-    )
+    return SecretsService(json_store, store=json_store)
 
 
 @lru_cache

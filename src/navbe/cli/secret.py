@@ -76,7 +76,7 @@ def secret_delete(
 def secret_has(
     key: Annotated[str, typer.Argument(help="Credential key to check.")],
 ) -> None:
-    """Check whether a key exists (credentials file or env)."""
+    """Check whether a key exists in the credentials file."""
     present = run_async(get_secrets_service().has(key))
     label = "yes" if present else "no"
     console.print(f"{key}: {label}")

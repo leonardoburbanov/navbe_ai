@@ -1,9 +1,6 @@
 """Secrets resolution and local credentials store use-cases."""
 
-import os
 from typing import Any
-
-from dotenv import load_dotenv
 
 from navbe.core.exceptions import NotFoundError, ValidationError
 from navbe.domains.secrets.interfaces import SecretsProvider, SecretsStore
@@ -15,54 +12,22 @@ from navbe.domains.secrets.models import (
     validate_secret_key,
 )
 
-# ponytail: load once at import — upgrade: injectable env source
-load_dotenv()
-
-
-class EnvSecretsProvider:
-    """v0.1 provider: reads from process env / loaded .env file."""
-
-    async def resolve(self, key: str) -> str:
-        """Resolve ``key`` from the process environment."""
-        value = os.environ.get(key)
-        if value is None:
-            raise NotFoundError(
-                f"Secret '{key}' not found in environment",
-                details={
-                    "key": key,
-                    "hint": "define it in .env or export it before running navbe",
-                },
-            )
-        return value
-
-    async def has(self, key: str) -> bool:
-        """True if ``key`` is set in the process environment."""
-        return key in os.environ
-
 
 class SecretsService:
-    """Resolve secret refs and manage the local credentials store."""
+    """Resolve secret refs and manage the local credentials JSON file only."""
 
     def __init__(
         self,
         provider: SecretsProvider,
         store: SecretsStore | None = None,
-        *,
-        presence_checks: list[Any] | None = None,
     ) -> None:
         """Create a service with resolve provider and optional mutable store.
 
-        ``presence_checks`` are objects with ``async has(key) -> bool`` used by
-        ``has()`` (JSON store then env). Defaults to ``[store]`` when store set.
+        Production wiring uses the same JSON file for both provider and store.
+        Env / ``.env`` are never consulted.
         """
         self._provider = provider
         self._store = store
-        if presence_checks is not None:
-            self._presence = list(presence_checks)
-        elif store is not None:
-            self._presence = [store]
-        else:
-            self._presence = []
 
     def _require_store(self) -> SecretsStore:
         """Return the store or raise if credentials file management is disabled."""
@@ -118,45 +83,32 @@ class SecretsService:
         return items
 
     async def get_hint(self, key: str) -> CredentialHint:
-        """Return masked metadata for ``key`` from store or env (never the value)."""
+        """Return masked metadata for ``key`` from the credentials file."""
         validate_secret_key(key)
-        store = self._store
-        if store is not None:
-            record = await store.get_record(key)
-            if record is not None:
-                return CredentialHint(
-                    key=key,
-                    hint=mask_secret(record.value),
-                    app=record.app,
-                    source="store",
-                    updated_at=record.updated_at,
-                )
-        for checker in self._presence:
-            if store is not None and checker is store:
-                continue
-            if await checker.has(key):
-                return CredentialHint(
-                    key=key,
-                    hint=None,
-                    app=None,
-                    source="env",
-                    updated_at=None,
-                )
-        raise NotFoundError(
-            f"Secret '{key}' not found in credentials file or environment",
-            details={
-                "key": key,
-                "hint": "use secret_set or define it in .env / export it",
-            },
+        store = self._require_store()
+        record = await store.get_record(key)
+        if record is None:
+            raise NotFoundError(
+                f"Secret '{key}' not found in credentials file",
+                details={
+                    "key": key,
+                    "hint": "use secret_set to store it in navbe_credentials.json",
+                },
+            )
+        return CredentialHint(
+            key=key,
+            hint=mask_secret(record.value),
+            app=record.app,
+            source="store",
+            updated_at=record.updated_at,
         )
 
     async def has(self, key: str) -> bool:
-        """True if ``key`` is present in the credentials file or environment."""
+        """True if ``key`` is present in the credentials file."""
         validate_secret_key(key)
-        for checker in self._presence:
-            if await checker.has(key):
-                return True
-        return False
+        if self._store is None:
+            return False
+        return await self._store.has(key)
 
     async def _walk(self, node: Any) -> Any:
         """Walk dict/list trees replacing secret refs."""

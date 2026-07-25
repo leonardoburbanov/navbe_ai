@@ -1,12 +1,12 @@
-"""Tests for JSON credentials file and chained secrets resolution."""
+"""Tests for JSON credentials file secrets resolution."""
 
 from pathlib import Path
 
 import pytest
 
 from navbe.core.exceptions import NotFoundError, ValidationError
-from navbe.domains.secrets.json_file import ChainedSecretsProvider, JsonFileSecretsProvider
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 
 
 async def test_json_set_resolve_list_delete(tmp_path: Path) -> None:
@@ -32,43 +32,23 @@ async def test_json_invalid_key_rejected(tmp_path: Path) -> None:
         await store.set("API_KEY", "")
 
 
-async def test_chain_prefers_json_over_env(
+async def test_service_ignores_env(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """JSON file wins when both define the same key."""
+    """SecretsService never resolves from environment variables."""
     monkeypatch.setenv("API_KEY", "from-env")
     store = JsonFileSecretsProvider(tmp_path / "creds.json")
-    await store.set("API_KEY", "from-file")
-    chain = ChainedSecretsProvider([store, EnvSecretsProvider()])
-    service = SecretsService(chain, store=store, presence_checks=[store, EnvSecretsProvider()])
-    assert await service.resolve_ref("API_KEY") == "from-file"
-    resolved = await service.resolve_config({"h": {"$secret": "API_KEY"}})
-    assert resolved == {"h": "from-file"}
+    service = SecretsService(store, store=store)
+    with pytest.raises(NotFoundError):
+        await service.resolve_ref("API_KEY")
+    assert await service.has("API_KEY") is False
 
 
-async def test_chain_falls_back_to_env(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Missing JSON key falls back to environment."""
-    monkeypatch.setenv("ONLY_ENV", "env-value")
+async def test_missing_raises_without_value(tmp_path: Path) -> None:
+    """Missing key raises NotFoundError with key name only."""
     store = JsonFileSecretsProvider(tmp_path / "creds.json")
-    chain = ChainedSecretsProvider([store, EnvSecretsProvider()])
-    service = SecretsService(chain, store=store, presence_checks=[store, EnvSecretsProvider()])
-    assert await service.resolve_ref("ONLY_ENV") == "env-value"
-    assert await service.has("ONLY_ENV") is True
-
-
-async def test_chain_missing_raises_without_value(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Missing everywhere raises NotFoundError with key name only."""
-    monkeypatch.delenv("NOPE", raising=False)
-    store = JsonFileSecretsProvider(tmp_path / "creds.json")
-    chain = ChainedSecretsProvider([store, EnvSecretsProvider()])
-    service = SecretsService(chain, store=store)
+    service = SecretsService(store, store=store)
     with pytest.raises(NotFoundError) as exc_info:
         await service.resolve_ref("NOPE")
     assert exc_info.value.details["key"] == "NOPE"
@@ -77,12 +57,7 @@ async def test_chain_missing_raises_without_value(
 async def test_service_set_list_has(tmp_path: Path) -> None:
     """SecretsService mutators write through the JSON store."""
     store = JsonFileSecretsProvider(tmp_path / "creds.json")
-    env = EnvSecretsProvider()
-    service = SecretsService(
-        ChainedSecretsProvider([store, env]),
-        store=store,
-        presence_checks=[store, env],
-    )
+    service = SecretsService(store, store=store)
     hint = await service.set("RESEND_API_KEY", "re-test-key", app="resend")
     assert hint.hint == "****-key"
     assert hint.app == "resend"
@@ -117,21 +92,10 @@ async def test_set_preserves_app_on_rotate(tmp_path: Path) -> None:
     assert record.app == "resend"
 
 
-async def test_get_hint_env_only_has_no_hint(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Env-only keys are present but never return a value-derived hint."""
-    monkeypatch.setenv("ONLY_ENV", "env-secret-zzzz")
+async def test_get_hint_missing_key(tmp_path: Path) -> None:
+    """get_hint raises when the key is not in the credentials file."""
     store = JsonFileSecretsProvider(tmp_path / "creds.json")
-    env = EnvSecretsProvider()
-    service = SecretsService(
-        ChainedSecretsProvider([store, env]),
-        store=store,
-        presence_checks=[store, env],
-    )
-    assert await service.has("ONLY_ENV") is True
-    hint = await service.get_hint("ONLY_ENV")
-    assert hint.source == "env"
-    assert hint.hint is None
-    assert "zzzz" not in str(hint.model_dump())
+    service = SecretsService(store, store=store)
+    with pytest.raises(NotFoundError) as exc_info:
+        await service.get_hint("MISSING_KEY")
+    assert exc_info.value.details["key"] == "MISSING_KEY"

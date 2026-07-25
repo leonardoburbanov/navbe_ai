@@ -1,14 +1,16 @@
 """Standalone secrets resolution without Flow or connectors."""
 
-import pytest
+from pathlib import Path
 
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 
 
-async def test_secret_resolution_end_to_end(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Resolve nested secret refs end-to-end via EnvSecretsProvider."""
-    monkeypatch.setenv("SALES_BOT_KEY", "sk-test-456")
-    service = SecretsService(EnvSecretsProvider())
+async def test_secret_resolution_end_to_end(tmp_path: Path) -> None:
+    """Resolve nested secret refs end-to-end via JSON credentials file."""
+    store = JsonFileSecretsProvider(tmp_path / "creds.json")
+    service = SecretsService(store, store=store)
+    await service.set("SALES_BOT_KEY", "sk-test-456")
 
     config = {
         "base_url": "https://example.com",

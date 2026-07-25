@@ -1,35 +1,24 @@
 """Tests for secrets service."""
 
+from pathlib import Path
+
 import pytest
 
 from navbe.core.exceptions import NotFoundError
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 
 
-async def test_env_provider_resolves_existing_var(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Existing env vars resolve to their values."""
-    monkeypatch.setenv("API_KEY", "sk-123")
-    assert await EnvSecretsProvider().resolve("API_KEY") == "sk-123"
+async def _service(tmp_path: Path) -> SecretsService:
+    """Build a JSON-backed secrets service under ``tmp_path``."""
+    store = JsonFileSecretsProvider(tmp_path / "creds.json")
+    return SecretsService(store, store=store)
 
 
-async def test_env_provider_missing_var_raises_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Missing env vars raise NotFoundError with key + hint only."""
-    monkeypatch.delenv("MISSING_SECRET", raising=False)
-    with pytest.raises(NotFoundError) as exc_info:
-        await EnvSecretsProvider().resolve("MISSING_SECRET")
-
-    assert exc_info.value.details["key"] == "MISSING_SECRET"
-    assert "hint" in exc_info.value.details
-    assert "sk-" not in str(exc_info.value.details)
-    assert "sk-" not in exc_info.value.message
-
-
-async def test_resolve_config_replaces_nested_secret_ref(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_resolve_config_replaces_nested_secret_ref(tmp_path: Path) -> None:
     """Nested secret refs resolve; sibling fields stay untouched."""
-    monkeypatch.setenv("API_KEY", "sk-123")
-    service = SecretsService(EnvSecretsProvider())
+    service = await _service(tmp_path)
+    await service.set("API_KEY", "sk-123")
     resolved = await service.resolve_config(
         {
             "base_url": "https://example.com",
@@ -42,19 +31,17 @@ async def test_resolve_config_replaces_nested_secret_ref(
     }
 
 
-async def test_resolve_config_replaces_secret_ref_inside_list(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_resolve_config_replaces_secret_ref_inside_list(tmp_path: Path) -> None:
     """Secret refs inside lists resolve; plain values stay as-is."""
-    monkeypatch.setenv("A", "token-a")
-    service = SecretsService(EnvSecretsProvider())
+    service = await _service(tmp_path)
+    await service.set("A", "token-a")
     resolved = await service.resolve_config({"tokens": [{"$secret": "A"}, "plain"]})
     assert resolved == {"tokens": ["token-a", "plain"]}
 
 
-async def test_resolve_config_no_refs_returns_equivalent_dict() -> None:
+async def test_resolve_config_no_refs_returns_equivalent_dict(tmp_path: Path) -> None:
     """Configs without secret refs return an equivalent dict."""
-    service = SecretsService(EnvSecretsProvider())
+    service = await _service(tmp_path)
     config = {"base_url": "https://example.com", "timeout": 5}
     resolved = await service.resolve_config(config)
     assert resolved == config
@@ -62,12 +49,11 @@ async def test_resolve_config_no_refs_returns_equivalent_dict() -> None:
 
 
 async def test_resolve_config_missing_secret_raises_and_identifies_key(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Missing nested secret identifies the failing key name only."""
-    monkeypatch.setenv("PRESENT", "ok")
-    monkeypatch.delenv("MISSING_NESTED", raising=False)
-    service = SecretsService(EnvSecretsProvider())
+    service = await _service(tmp_path)
+    await service.set("PRESENT", "ok")
 
     with pytest.raises(NotFoundError) as exc_info:
         await service.resolve_config(

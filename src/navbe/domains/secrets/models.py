@@ -33,7 +33,7 @@ class CredentialHint(BaseModel):
     key: str
     hint: str | None = None
     app: str | None = None
-    source: Literal["store", "env"]
+    source: Literal["store"] = "store"
     updated_at: datetime | None = None
 
 

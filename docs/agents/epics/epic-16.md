@@ -12,7 +12,8 @@ EPIC 11 shipped a flat credentials JSON map with set/list/delete/has, but list r
 
 ### Identity / scope
 
-Machine-local: one Navbe data dir = one operator. No Navbe user accounts. Env remains resolve fallback only; management UX targets the JSON file.
+Machine-local: one Navbe data dir = one operator. No Navbe user accounts.
+`$secret` and secret_* tools use **only** `navbe_credentials.json` — never env / `.env`.
 
 ### Storage (backward compatible)
 
@@ -25,7 +26,8 @@ Reader normalizes both to `CredentialRecord`. Writer persists the record shape. 
 
 ### Masking
 
-Hint = `****` + last 4 chars. Values shorter than 4 → `****` only (no short-secret leak). Hints only from the JSON store. Env-only: `has=true`, `hint=null`, `source="env"`.
+Hint = `****` + last 4 chars. Values shorter than 4 → `****` only (no short-secret leak).
+Hints come only from the JSON store.
 
 ### App label
 
@@ -97,7 +99,7 @@ Parity with MCP: `navbe secret set KEY [--app …]`, `list` table, `hint KEY`; R
 - [x] Set key via CLI/MCP with `app=resend`; list shows `****` + last 4
 - [x] Rotate (set again) updates hint; full value never in responses
 - [x] Legacy flat JSON still resolves for flows
-- [x] Env-only key: `has` true, no hint from env value
+- Env-only keys are ignored (service never reads env / `.env` for `$secret`)
 - [x] `uv run ruff check .` / `ty check src/` / `lint-imports` / `pytest` green
 - [x] Agent docs + howto updated
 

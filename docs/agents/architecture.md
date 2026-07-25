@@ -68,13 +68,13 @@ Built-ins registered in `ConnectorRegistry`:
 
 ## Secrets domain
 
-`SecretsService` resolves `{"$secret": "KEY"}` leaves in connector configs.
-Resolution order: local JSON credentials file (`NAVBE_CREDENTIALS_PATH`, default
-`./navbe_credentials.json`) then process env / `.env`. Agents manage the JSON
-store via MCP `secret_set` / `secret_list` / `secret_hint` / `secret_delete` /
-`secret_has` (or REST `/api/v1/secrets`) — full values are never returned.
-Entries may carry an optional `app` slug; list/hint return a masked suffix
-(`****` + last 4). Env remains resolve fallback only (no hint from env values).
+`SecretsService` resolves `{"$secret": "KEY"}` leaves in connector configs from
+the local JSON credentials file only (`NAVBE_CREDENTIALS_PATH`, default
+`./navbe_credentials.json`). Env / `.env` are never consulted for `$secret`
+resolution. Agents manage the store via MCP `secret_set` / `secret_list` /
+`secret_hint` / `secret_delete` / `secret_has` (or REST `/api/v1/secrets`) —
+full values are never returned. Entries may carry an optional `app` slug;
+list/hint return a masked suffix (`****` + last 4).
 Missing keys raise `NotFoundError` with the key name and a hint — never a secret value.
 
 ## Sync domain

@@ -3,7 +3,6 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
 
 from pytest_httpserver import HTTPServer
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -18,7 +17,8 @@ from navbe.domains.execution.repository import FileSystemRunRepository
 from navbe.domains.execution.service import RunService, resolve_connector_configs
 from navbe.domains.flows.repository import FileSystemFlowRepository, metadata
 from navbe.domains.flows.service import FlowService
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -65,10 +65,8 @@ def build_real_flow_service(tmp_path: Path) -> FlowService:
 async def test_full_demo_flow_executes_end_to_end(
     tmp_path: Path,
     httpserver: HTTPServer,
-    monkeypatch: Any,
 ) -> None:
     """Execute the sales-bot demo with mocked HTTP + LLM."""
-    monkeypatch.setenv("CRM_API_KEY", "sk-test")
     httpserver.expect_request("/leads/lead-1/notes", method="POST").respond_with_json(
         {"ok": True}
     )
@@ -101,8 +99,10 @@ async def test_full_demo_flow_executes_end_to_end(
             node["config"]["path"] = "/leads/lead-1/notes"
     await flow_service.create(demo)
 
+    creds = JsonFileSecretsProvider(tmp_path / "creds.json")
+    await creds.set("CRM_API_KEY", "sk-test")
     connector_service = ConnectorService(
-        secrets_service=SecretsService(EnvSecretsProvider()),
+        secrets_service=SecretsService(creds, store=creds),
     )
     run_repo = FileSystemRunRepository(
         runs_dir_for=lambda flow_id: tmp_path / "runs" / flow_id,

@@ -20,7 +20,8 @@ from navbe.domains.execution.repository import FileSystemRunRepository
 from navbe.domains.execution.service import RunService, resolve_connector_configs
 from navbe.domains.flows.repository import FileSystemFlowRepository, metadata
 from navbe.domains.flows.service import FlowService
-from navbe.domains.secrets.service import EnvSecretsProvider, SecretsService
+from navbe.domains.secrets.json_file import JsonFileSecretsProvider
+from navbe.domains.secrets.service import SecretsService
 from navbe.mcp_app.server import create_mcp_server
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -53,8 +54,13 @@ def build_real_mcp_server(tmp_path: Path, *, llm_client: Any | None = None):
             session_factory=session_factory,
         )
     )
+    creds = JsonFileSecretsProvider(tmp_path / "creds.json")
+    (tmp_path / "creds.json").write_text(
+        '{"CRM_API_KEY": "sk-test"}\n',
+        encoding="utf-8",
+    )
     connector_service = ConnectorService(
-        secrets_service=SecretsService(EnvSecretsProvider()),
+        secrets_service=SecretsService(creds, store=creds),
     )
     run_repo = FileSystemRunRepository(
         runs_dir_for=lambda flow_id: tmp_path / "runs" / flow_id,
@@ -94,10 +100,8 @@ def build_real_mcp_server(tmp_path: Path, *, llm_client: Any | None = None):
 async def test_full_demo_cycle_via_mcp_client(
     tmp_path: Path,
     httpserver: HTTPServer,
-    monkeypatch: Any,
 ) -> None:
     """Simulate agent: read catalog, validate, create, run, poll status."""
-    monkeypatch.setenv("CRM_API_KEY", "sk-test")
     httpserver.expect_request("/leads/lead-1/notes", method="POST").respond_with_json(
         {"ok": True}
     )
