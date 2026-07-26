@@ -24,7 +24,7 @@
 ## Non-goals
 
 - Destinations / Langfuse product rename
-- Scheduler in `navbe-mcp` stdio
+- Separate stdio MCP process (removed; HTTP MCP on serve only)
 - Auto-cancel-then-restart on overlap
 - Slack/webhooks
 - Queueing missed fires while serve was down (on wake: fire once if due, then next)

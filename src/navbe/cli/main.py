@@ -11,11 +11,12 @@ from rich.console import Console
 
 from navbe import __version__
 from navbe.cli import flows, github_app, mcp, runs, schedules, secret, steps, sync
+from navbe.cli.bootstrap import bootstrap_cmd
 from navbe.cli.info import info_cmd
 from navbe.cli.interactive import run_session, should_start_interactive
 from navbe.cli.login import login_app, logout_app
 from navbe.cli.onboarding import print_banner, print_quick_start
-from navbe.cli.serve import serve_cmd
+from navbe.cli.serve import serve_cmd, status_cmd, stop_cmd
 from navbe.cli.setup import setup_cmd
 
 app = typer.Typer(
@@ -43,8 +44,11 @@ app.add_typer(github_app.app, name="github")
 
 # Top-level commands
 app.command("setup")(setup_cmd)
+app.command("bootstrap")(bootstrap_cmd)
 app.command("info")(info_cmd)
 app.command("serve")(serve_cmd)
+app.command("status")(status_cmd)
+app.command("stop")(stop_cmd)
 
 # Alias for tests that historically imported ``cli``
 cli = app
@@ -70,7 +74,7 @@ def _root(
         ),
     ] = None,
 ) -> None:
-    """Agents use ``navbe-mcp``; humans use this CLI.
+    """Local-first ops console; agents talk to ``navbe serve`` over HTTP MCP.
 
     Bare ``navbe`` opens the interactive slash menu on a TTY.
     """
@@ -82,13 +86,13 @@ def _root(
     print_banner()
     console = Console()
     console.print(
-        "[dim]New here? Run [bold cyan]navbe setup[/bold cyan] "
-        "for an interactive walkthrough.[/dim]"
+        "[dim]New here? Run [bold cyan]navbe bootstrap[/bold cyan] "
+        "to start the daemon and wire agents.[/dim]"
     )
     console.print()
     print_quick_start()
     typer.echo()
-    typer.echo("Run navbe setup to begin, or navbe --help for all commands.")
+    typer.echo("Run navbe bootstrap to begin, or navbe --help for all commands.")
 
 
 def _configure_stdio_utf8() -> None:

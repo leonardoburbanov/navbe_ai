@@ -24,7 +24,7 @@ uv run lint-imports
 uv run pytest
 uv run pytest tests/unit/core/test_config.py -v
 uv run navbe --help
-uv run navbe-mcp --help
+uv run navbe serve --help
 ```
 
 Prefer the commands documented in [AGENTS.md](../../AGENTS.md) and

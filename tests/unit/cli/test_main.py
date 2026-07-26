@@ -11,6 +11,7 @@ def test_navbe_help_lists_command_groups() -> None:
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
     assert "setup" in result.output
+    assert "bootstrap" in result.output
     assert "info" in result.output
     assert "login" in result.output
     assert "secret" in result.output
@@ -19,6 +20,8 @@ def test_navbe_help_lists_command_groups() -> None:
     assert "runs" in result.output
     assert "steps" in result.output
     assert "serve" in result.output
+    assert "status" in result.output
+    assert "stop" in result.output
     assert "interactive" in result.output.lower() or "slash" in result.output.lower()
 
 
@@ -28,7 +31,7 @@ def test_bare_navbe_non_tty_prints_quick_start(monkeypatch) -> None:
     runner = CliRunner()
     result = runner.invoke(cli, [])
     assert result.exit_code == 0
-    assert "navbe setup" in result.output.lower() or "Quick start" in result.output
+    assert "navbe bootstrap" in result.output.lower() or "Quick start" in result.output
 
 
 def test_bare_navbe_tty_runs_slash_session(monkeypatch) -> None:

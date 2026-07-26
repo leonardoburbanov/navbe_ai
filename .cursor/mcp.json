@@ -1,13 +1,7 @@
 {
   "mcpServers": {
     "navbe": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "${workspaceFolder}",
-        "navbe-mcp"
-      ]
+      "url": "http://127.0.0.1:8000/mcp"
     }
   }
 }

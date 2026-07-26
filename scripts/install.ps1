@@ -1,19 +1,24 @@
-# Install Navbe CLI + MCP via uv tool install (Cursor-style one-liner).
+# Install Navbe CLI + start local daemon (MCP + schedules) in one shot.
 # Usage:
 #   irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.ps1 | iex
 #   # or after a release:
 #   irm https://github.com/leonardoburbanov/navbe_ai_v0.1/releases/latest/download/install.ps1 | iex
+#
+# Env:
+#   NAVBE_FROM_GIT=1          install from git instead of PyPI
+#   NAVBE_REPO / NAVBE_REF    git remote + tag/branch when using git
 $ErrorActionPreference = "Stop"
 
 $Repo = if ($env:NAVBE_REPO) { $env:NAVBE_REPO } else { "https://github.com/leonardoburbanov/navbe_ai_v0.1.git" }
-$Ref = $env:NAVBE_REF  # optional tag/branch, e.g. v0.1.0
+$Ref = $env:NAVBE_REF
+$FromGit = $env:NAVBE_FROM_GIT
 
 function Write-Info([string]$Message) {
     Write-Host "  $Message"
 }
 
 Write-Host "Navbe installer" -ForegroundColor Cyan
-Write-Info "Installing CLI (navbe) and MCP server (navbe-mcp)"
+Write-Info "Installing CLI (navbe) and bootstrapping the local daemon"
 
 $uv = Get-Command uv -ErrorAction SilentlyContinue
 if (-not $uv) {
@@ -26,13 +31,24 @@ if (-not $uv) {
     throw "uv still not on PATH after install"
 }
 
-$spec = "git+$Repo"
-if ($Ref) {
-    $spec = "${spec}@$Ref"
+$useGit = [bool]$FromGit -or [bool]$Ref
+if ($useGit) {
+    $spec = "git+$Repo"
+    if ($Ref) { $spec = "${spec}@$Ref" }
+    Write-Info "uv tool install $spec"
+    & uv tool install --force $spec
+} else {
+    Write-Info "uv tool install navbe"
+    try {
+        & uv tool install --force navbe
+        if ($LASTEXITCODE -ne 0) { throw "PyPI install failed" }
+    } catch {
+        Write-Info "PyPI package not available yet — falling back to git"
+        $spec = "git+$Repo"
+        if ($Ref) { $spec = "${spec}@$Ref" }
+        & uv tool install --force $spec
+    }
 }
-
-Write-Info "uv tool install $spec"
-& uv tool install --force $spec
 
 $toolBin = $null
 try {
@@ -46,13 +62,11 @@ if ($toolBin -and ($env:Path -notlike "*$toolBin*")) {
 }
 
 $navbe = Get-Command navbe -ErrorAction SilentlyContinue
-$mcp = Get-Command navbe-mcp -ErrorAction SilentlyContinue
 if (-not $navbe) { throw "navbe not on PATH (bin dir: $toolBin)" }
-if (-not $mcp) { throw "navbe-mcp not on PATH" }
+
+Write-Host "Bootstrap" -ForegroundColor Cyan
+& navbe bootstrap
 
 Write-Host "Installed" -ForegroundColor Green
 Write-Info (& navbe --version)
-Write-Info "Next:"
-Write-Info "  navbe setup"
-Write-Info "  navbe mcp configure"
-Write-Info "  navbe-mcp --help"
+Write-Info "Next: restart Cursor / Claude Desktop, then: navbe status"

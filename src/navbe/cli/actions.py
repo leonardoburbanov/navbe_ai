@@ -196,9 +196,10 @@ def run_setup(*, yes: bool = False, dry_run: bool = False, skip_sync: bool = Fal
 def serve_hint(*, host: str = "127.0.0.1", port: int = 8000) -> None:
     """Print how to start the HTTP server (does not block the REPL)."""
     console.print(
-        f"[dim]Start the API outside this session:[/dim]\n"
-        f"  [cyan]navbe serve --host {host} --port {port}[/cyan]\n"
-        f"[dim]Serving takes over the terminal; exit the menu first if needed.[/dim]"
+        f"[dim]Start the daemon outside this session:[/dim]\n"
+        f"  [cyan]navbe serve --detach --host {host} --port {port}[/cyan]\n"
+        f"  [cyan]navbe status[/cyan]   [cyan]navbe stop[/cyan]\n"
+        f"[dim]Or foreground: navbe serve --host {host} --port {port}[/dim]"
     )
 
 

@@ -40,9 +40,8 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 | `src/navbe/domains/schedules/` | ScheduleSpec, when parser, tick loop (serve), failure notify |
 | `src/navbe/domains/` | Other domains arrive in later EPICs |
 | `src/navbe/api/` | FastAPI surface |
-| `src/navbe/mcp_app/` | FastMCP tools / resources |
-| `src/navbe/mcp_stdio.py` | Stdio MCP entry (`navbe-mcp`) |
-| `scripts/install.sh` / `install.ps1` | End-user installers |
+| `src/navbe/mcp_app/` | FastMCP tools / resources (mounted at `/mcp` on serve) |
+| `scripts/install.sh` / `install.ps1` | End-user installers (`navbe bootstrap`) |
 | `tests/` | Unit + integration; shared fixtures in `conftest.py` |
 
 ## Next reads
@@ -67,6 +66,6 @@ Copy [`.env.example`](../../.env.example) to `.env` for local settings (never co
 - [EPIC 14](epics/epic-14.md) — GitHub OAuth device flow + workspace sync layout
 - [EPIC 15](epics/epic-15.md) — GitHub App Device Flow auth + token refresh
 - [Connect agents](../connect_agents.md) — Claude Desktop plugin/skill + Cursor MCP setup
-- [Claude plugin](../../claude-plugin/) — `navbe-flows` skill + local `navbe-mcp`
+- [Claude plugin](../../claude-plugin/) — `navbe-flows` skill + HTTP MCP URL
 - [Architecture](architecture.md) — layers and domain pattern
 - [Operations](operations.md) — commands, env, CI, releases

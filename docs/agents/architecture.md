@@ -179,10 +179,10 @@ Claude packaging: [`claude-plugin/`](../../claude-plugin/) bundles local MCP
 mounts REST under `/api/v1/*` and FastMCP at `/mcp` via `http_app(path="/")`
 with the MCP lifespan (and SQLite `flows_index` create_all on startup).
 
-Stdio clients (Claude Desktop, Cursor) use `navbe-mcp`
-(`navbe.mcp_stdio:main`) — same services, `transport="stdio"`. End-user
-install puts `navbe-mcp` on `PATH`; contributors use `uv run navbe-mcp`.
-See [../install.md](../install.md) and [../connect_agents.md](../connect_agents.md).
+Clients (Claude Desktop, Cursor) connect to the same process over HTTP MCP at
+`/mcp` (`http://127.0.0.1:8000/mcp` by default). Start with `navbe bootstrap`
+or `navbe serve` / `navbe serve --detach`. See [../install.md](../install.md)
+and [../connect_agents.md](../connect_agents.md).
 
 ## Human CLI
 
@@ -191,16 +191,17 @@ domain services as MCP/REST — no HTTP round-trip. Package: `src/navbe/cli/`.
 
 | Command group | Role |
 | --- | --- |
+| `navbe bootstrap` | Data dirs + detach serve + write client MCP URL configs |
 | `navbe secret` | Local credentials (masked hints; values never printed) |
 | `navbe sync` | GitHub `flows/<id>/flow.json` mirror |
 | `navbe flows` / `navbe runs` / `navbe steps` | Browse flows, runs, step catalog |
-| `navbe serve` | FastAPI + MCP HTTP |
-| `navbe setup` | First-run onboarding (data dirs, secrets, sync, MCP write) |
-| `navbe mcp show` / `configure` | Pasteable snippet / write Cursor & Claude Desktop configs |
+| `navbe serve` / `status` / `stop` | Daemon (API + MCP + schedules) |
+| `navbe setup` | Interactive onboarding (data dirs, secrets, sync, MCP write) |
+| `navbe mcp show` / `configure` | Pasteable URL snippet / write Cursor & Claude Desktop configs |
 | `navbe info` | Paths, credential/sync readiness, version |
 | `navbe login --status` | Recommended API keys present (never values) |
 
-Distribution (install scripts, `uv tool install`, GitHub Releases): [../install.md](../install.md).
+Distribution (install scripts, `uv tool install`, GitHub Releases / PyPI): [../install.md](../install.md).
 
 ## Persistence split (target)
 

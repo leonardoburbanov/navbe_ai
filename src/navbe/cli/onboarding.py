@@ -39,8 +39,8 @@ RECOMMENDED_KEYS = (
 QUICK_START = """\
 [bold]Quick start[/bold]
 
-  1. [cyan]navbe setup[/cyan]              Verify install + local data dirs
-  2. [cyan]navbe mcp configure[/cyan]       Wire Cursor / Claude Desktop to navbe-mcp
+  1. [cyan]navbe bootstrap[/cyan]           Start daemon + wire Cursor / Claude
+  2. [cyan]navbe status[/cyan]               Confirm serve + MCP URL are up
   3. [cyan]navbe login github[/cyan]        Authorize Navbe AI (you do not create an app)
   4. [cyan]navbe github install[/cyan]      Install Navbe AI on GitHub (if needed)
   5. [cyan]navbe sync connect[/cyan]        Pick a repo you already granted to the app
@@ -49,7 +49,8 @@ QUICK_START = """\
 
   Fix a bad install: [cyan]navbe github reinstall[/cyan]
 
-Agents use [bold]navbe-mcp[/bold]; humans use this CLI. Run [cyan]navbe --help[/cyan] for commands.\
+Agents talk to [bold]navbe serve[/bold] (HTTP MCP); humans use this CLI. \
+Run [cyan]navbe --help[/cyan] for commands.\
 """
 
 _ACTIVE = {RunStatus.PENDING, RunStatus.RUNNING, RunStatus.PAUSED}
@@ -165,8 +166,8 @@ def _smart_tip(snap: _MenuSnapshot) -> str:
         )
     if snap.flow_count == 0:
         return (
-            "No flows yet - connect an agent (navbe-mcp) and call flow_create, "
-            "or sync pull if you use GitHub."
+            "No flows yet - connect an agent (navbe serve MCP URL) and call "
+            "flow_create, or sync pull if you use GitHub."
         )
     if snap.run_count == 0:
         return (
@@ -209,7 +210,8 @@ def _status_panel(snap: _MenuSnapshot) -> Group:
     return Group(
         Text(f"Welcome back {name}!", style="bold white"),
         Text(
-            "Local-first flow orchestration - humans use this CLI, agents use navbe-mcp.",
+            "Local-first flow orchestration - humans use this CLI; "
+            "agents use navbe serve (HTTP MCP).",
             style="dim",
         ),
         Text(""),
@@ -259,7 +261,7 @@ def print_banner() -> None:
     console.print(
         Panel(
             f"[bold {NAVBE_BLUE}]Navbe[/bold {NAVBE_BLUE}] - local-first flow orchestration\n"
-            "[dim]Human ops console - agents use navbe-mcp[/dim]",
+            "[dim]Human ops console - agents use navbe serve (HTTP MCP)[/dim]",
             border_style=NAVBE_BLUE,
             box=box.ROUNDED,
         )

@@ -25,7 +25,7 @@ from navbe.cli.onboarding import (
     python_version_ok,
     section,
 )
-from navbe.cli.prompts import choice, confirm, mcp_process_count, pause
+from navbe.cli.prompts import choice, confirm, pause, serve_process_running
 from navbe.core.config import get_settings
 from navbe.dependencies import get_secrets_service, get_sync_service
 
@@ -39,13 +39,6 @@ def _run_uv_sync() -> tuple[bool, str]:
     proc = subprocess.run(["uv", "sync"], capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         err = (proc.stderr or proc.stdout or "").strip()[:500]
-        if "navbe-mcp" in err and (
-            "being used" in err or "utilizado" in err or "error 32" in err
-        ):
-            return (
-                False,
-                "navbe-mcp.exe is locked. Stop MCP (Ctrl+C / Claude restart), then retry.",
-            )
         return False, f"uv sync failed: {err}"
     return True, "dependencies synced"
 
@@ -191,11 +184,10 @@ def setup_cmd(
     # 2. Dependencies
     section("Dependencies", step)
     step += 1
-    running = mcp_process_count()
-    if running:
+    if serve_process_running():
         console.print(
-            f" [yellow]![/yellow] {running} navbe-mcp process(es) running - "
-            "stop them before uv sync (Claude/Cursor MCP or terminal Ctrl+C)."
+            " [yellow]![/yellow] navbe serve is running - "
+            "usually fine during uv sync; stop with [cyan]navbe stop[/cyan] if needed."
         )
     if skip_sync:
         console.print(" [dim]Skipped (--skip-sync)[/dim]")
@@ -206,7 +198,7 @@ def setup_cmd(
         )
     elif dry_run:
         console.print(" [cyan]->[/cyan] would run: uv sync")
-    elif confirm(interactive, "Run uv sync now?", default=running == 0):
+    elif confirm(interactive, "Run uv sync now?", default=True):
         with console.status("[bold cyan]Running uv sync..."):
             ok, msg = _run_uv_sync()
         icon = "[green]ok[/green]" if ok else "[yellow]![/yellow]"
@@ -260,7 +252,10 @@ def setup_cmd(
     # 6. Agent connection
     section("Connect your coding agent", step)
     step += 1
-    console.print(" Agents use [bold]navbe-mcp[/bold] over stdio (not this CLI).")
+    console.print(
+        " Agents connect to [bold]navbe serve[/bold] over HTTP MCP "
+        "(URL in client config)."
+    )
     console.print(
         Panel(
             mcp_config_snippet(),

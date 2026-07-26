@@ -2,37 +2,18 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
-
 import typer
 from rich.console import Console
+
+from navbe.cli.daemon import read_serve_state
 
 console = Console()
 
 
-def mcp_process_count() -> int:
-    """Return how many ``navbe-mcp`` processes appear to be running."""
-    if sys.platform == "win32":
-        proc = subprocess.run(
-            ["tasklist", "/FI", "IMAGENAME eq navbe-mcp.exe", "/NH"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return proc.stdout.lower().count("navbe-mcp.exe")
-    proc = subprocess.run(
-        ["pgrep", "-fc", "navbe-mcp"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if proc.returncode not in (0, 1):
-        return 0
-    try:
-        return int(proc.stdout.strip() or "0")
-    except ValueError:
-        return 0
+def serve_process_running() -> bool:
+    """True when a detached ``navbe serve`` pidfile points at a live process."""
+    state = read_serve_state()
+    return state is not None and state.alive
 
 
 def confirm(interactive: bool, message: str, *, default: bool = True) -> bool:

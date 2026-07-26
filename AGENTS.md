@@ -85,14 +85,11 @@ uv sync
 # curl -fsSL …/scripts/install.sh | bash
 # irm …/scripts/install.ps1 | iex
 
-# human CLI (secrets, sync, runs, steps)
-uv run navbe setup          # first-run onboarding
-uv run navbe mcp configure  # wire Cursor / Claude Desktop
+# human CLI + one daemon (MCP + schedules + API)
+uv run navbe bootstrap      # dirs + serve --detach + wire agents
+uv run navbe status
 uv run navbe --help
-uv run navbe serve
-
-# MCP server (agents)
-uv run navbe-mcp
+uv run navbe serve          # foreground; or --detach
 
 # tests
 uv run pytest
@@ -189,7 +186,9 @@ Agents operate Navbe through tools roughly in this order of use:
 4. Execution — `flow_run`, `flow_status`, `flow_cancel`, list runs.
 5. Query — `query_destination` / `query_workflow_destination` (paginated SELECT).
 
-Schedules fire only while `navbe serve` is up. Prefer querying a synced DuckDB destination over calling the live source for analytics.
+Schedules fire only while `navbe serve` is up (same process as HTTP MCP at
+`/mcp`). Prefer querying a synced DuckDB destination over calling the live
+source for analytics.
 
 ---
 

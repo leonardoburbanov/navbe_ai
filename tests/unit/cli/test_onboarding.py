@@ -18,8 +18,8 @@ def test_navbe_no_args_shows_welcome(monkeypatch) -> None:
     result = runner.invoke(cli, [])
     assert result.exit_code == 0
     assert "Quick start" in result.output
-    assert "navbe setup" in result.output
-    assert "interactive" in result.output.lower()
+    assert "navbe bootstrap" in result.output
+    assert "navbe serve" in result.output.lower() or "http mcp" in result.output.lower()
 
 
 def test_navbe_help_includes_onboarding_commands() -> None:
@@ -28,6 +28,7 @@ def test_navbe_help_includes_onboarding_commands() -> None:
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
     assert "setup" in result.output
+    assert "bootstrap" in result.output
     assert "info" in result.output
     assert "login" in result.output
     assert "interactive" in result.output.lower() or "slash" in result.output.lower()
@@ -68,7 +69,7 @@ def test_setup_dry_run(monkeypatch) -> None:
     """setup --dry-run previews steps without uv sync."""
     monkeypatch.setattr("navbe.cli.setup.find_repo_root", lambda: Path.cwd())
     monkeypatch.setattr("navbe.cli.setup.get_secrets_service", lambda: FakeSecretsService())
-    monkeypatch.setattr("navbe.cli.setup.mcp_process_count", lambda: 0)
+    monkeypatch.setattr("navbe.cli.setup.serve_process_running", lambda: False)
     monkeypatch.setattr(
         "navbe.cli.setup.configure_clients",
         lambda *a, **k: ["would write ~/.cursor/mcp.json"],
@@ -77,14 +78,14 @@ def test_setup_dry_run(monkeypatch) -> None:
     result = runner.invoke(cli, ["setup", "--dry-run", "--skip-sync"])
     assert result.exit_code == 0
     assert "Dry run" in result.output
-    assert "navbe-mcp" in result.output
+    assert "navbe serve" in result.output
 
 
 def test_setup_yes_non_interactive(monkeypatch) -> None:
     """setup --yes runs without prompts."""
     monkeypatch.setattr("navbe.cli.setup.find_repo_root", lambda: Path.cwd())
     monkeypatch.setattr("navbe.cli.setup.get_secrets_service", lambda: FakeSecretsService())
-    monkeypatch.setattr("navbe.cli.setup.mcp_process_count", lambda: 0)
+    monkeypatch.setattr("navbe.cli.setup.serve_process_running", lambda: False)
     monkeypatch.setattr("navbe.cli.setup._run_uv_sync", lambda: (True, "synced"))
     monkeypatch.setattr(
         "navbe.cli.setup.configure_clients",
