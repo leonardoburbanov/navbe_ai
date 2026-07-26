@@ -16,9 +16,29 @@ def mcp_server_entry(
     *,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
+    client: ClientName = "cursor",
 ) -> dict[str, Any]:
-    """Single-server entry (URL transport; no ``mcpServers`` wrapper)."""
-    return {"url": default_mcp_url(host=host, port=port)}
+    """Single-server MCP entry for the given client.
+
+    Cursor accepts HTTP ``url`` entries. Claude Desktop's
+    ``claude_desktop_config.json`` only validates stdio (``command``/``args``),
+    so Claude gets an ``npx mcp-remote`` bridge to the local HTTP MCP URL.
+    """
+    url = default_mcp_url(host=host, port=port)
+    if client == "claude":
+        # --allow-http: local 127.0.0.1 is not TLS. --transport http-only: FastMCP streamable HTTP.
+        return {
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-remote",
+                url,
+                "--allow-http",
+                "--transport",
+                "http-only",
+            ],
+        }
+    return {"url": url}
 
 
 def mcp_config_snippet(
@@ -26,9 +46,10 @@ def mcp_config_snippet(
     wrap: bool = True,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
+    client: ClientName = "cursor",
 ) -> str:
     """Return JSON for Cursor/Claude Desktop MCP config."""
-    entry = mcp_server_entry(host=host, port=port)
+    entry = mcp_server_entry(host=host, port=port, client=client)
     payload: dict[str, Any] = {"mcpServers": {"navbe": entry}} if wrap else {"navbe": entry}
     return json.dumps(payload, indent=2)
 
@@ -65,6 +86,7 @@ def merge_navbe_mcp(
     *,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
+    client: ClientName = "cursor",
 ) -> dict[str, Any]:
     """Insert/replace the ``navbe`` server under ``mcpServers``."""
     out = dict(config)
@@ -73,7 +95,7 @@ def merge_navbe_mcp(
         servers = {}
     else:
         servers = dict(servers)
-    servers["navbe"] = mcp_server_entry(host=host, port=port)
+    servers["navbe"] = mcp_server_entry(host=host, port=port, client=client)
     out["mcpServers"] = servers
     return out
 
@@ -84,10 +106,11 @@ def write_mcp_config(
     dry_run: bool = False,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
+    client: ClientName = "cursor",
 ) -> str:
     """Merge Navbe into ``path`` and write it. Returns a short status string."""
     existing = _read_json_object(path)
-    merged = merge_navbe_mcp(existing, host=host, port=port)
+    merged = merge_navbe_mcp(existing, host=host, port=port, client=client)
     text = json.dumps(merged, indent=2) + "\n"
     if dry_run:
         return f"would write {path}"
@@ -109,7 +132,13 @@ def configure_clients(
     want_claude = clients in ("claude", "all")
     if want_cursor:
         actions.append(
-            write_mcp_config(cursor_mcp_path(), dry_run=dry_run, host=host, port=port)
+            write_mcp_config(
+                cursor_mcp_path(),
+                dry_run=dry_run,
+                host=host,
+                port=port,
+                client="cursor",
+            )
         )
     if want_claude:
         claude_path = claude_desktop_config_path()
@@ -117,6 +146,12 @@ def configure_clients(
             actions.append("skipped Claude Desktop (unsupported platform path)")
         else:
             actions.append(
-                write_mcp_config(claude_path, dry_run=dry_run, host=host, port=port)
+                write_mcp_config(
+                    claude_path,
+                    dry_run=dry_run,
+                    host=host,
+                    port=port,
+                    client="claude",
+                )
             )
     return actions

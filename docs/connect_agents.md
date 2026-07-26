@@ -82,17 +82,30 @@ claude-plugin/
 navbe mcp configure --client claude
 ```
 
-Or paste:
+Claude Desktop’s `claude_desktop_config.json` **only accepts stdio** (`command` /
+`args`). A bare `"url"` entry is skipped with “not valid MCP server
+configurations”. Navbe therefore writes an [`mcp-remote`](https://www.npmjs.com/package/mcp-remote)
+bridge (requires Node.js / `npx`):
 
 ```json
 {
   "mcpServers": {
     "navbe": {
-      "url": "http://127.0.0.1:8000/mcp"
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://127.0.0.1:8000/mcp",
+        "--allow-http",
+        "--transport",
+        "http-only"
+      ]
     }
   }
 }
 ```
+
+Keep `navbe serve` running. Fully quit and reopen Claude Desktop after editing.
 
 Config locations:
 
