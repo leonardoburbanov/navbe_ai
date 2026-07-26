@@ -260,13 +260,16 @@ Coding conventions and layering rules for agents working in this repo: **[AGENTS
 
 ## Contributing
 
-- Prefer extending an existing domain under `src/navbe/domains/` over new top-level packages.  
-- Keep MCP tools and HTTP routes thin — business logic lives in domain `service.py`.  
-- Ask before changing MCP tool names or argument shapes (agents depend on stability).  
-- Never commit `.env`, `navbe_credentials.json`, or live secret values.  
-- See [AGENTS.md](AGENTS.md) and [docs/agents/delivery.md](docs/agents/delivery.md) for DoD and EPIC process.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, PR expectations, and checks.
 
-Issues and PRs welcome on [GitHub](https://github.com/leonardoburbanov/navbe_ai).
+- Prefer extending an existing domain under `src/navbe/domains/` over new top-level packages.
+- Keep MCP tools and HTTP routes thin — business logic lives in domain `service.py`.
+- Ask before changing MCP tool names or argument shapes (agents depend on stability).
+- Never commit `.env`, `navbe_credentials.json`, or live secret values.
+- Security reports: **[SECURITY.md](SECURITY.md)** (private advisory, not public issues).
+- Community norms: **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**.
+
+Issues and PRs welcome on [GitHub](https://github.com/leonardoburbanov/navbe_ai). `main` requires a PR and a green **CI** check.
 
 ---
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/leonardoburbanov/navbe_ai/security/advisories/new
+    about: Report a security issue privately (do not file a public issue).
+  - name: Documentation
+    url: https://github.com/leonardoburbanov/navbe_ai/blob/main/docs/install.md
+    about: Install and agent connection docs.

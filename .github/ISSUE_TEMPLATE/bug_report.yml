@@ -1,0 +1,51 @@
+name: Bug report
+description: Something is broken or unexpected.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. For security issues, use a [private advisory](https://github.com/leonardoburbanov/navbe_ai/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Clear description of the bug.
+      placeholder: Expected X, got Y…
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or commands.
+      placeholder: |
+        1. navbe bootstrap
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Navbe version
+      description: Output of `navbe --version` (or commit SHA).
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - WSL
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / stack traces
+      description: Redact secrets before pasting.
+      render: text
