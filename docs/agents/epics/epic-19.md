@@ -1,6 +1,6 @@
 # EPIC 19 — Built-in Connectors (CRUD)
 
-**Status:** planned  
+**Status:** done  
 **Goal:** Register first-class ConnectorRegistry types for Resend (`send_email`), MongoDB, PostgreSQL, Langfuse, external DuckDB, ClickHouse, Supabase, Google Calendar, and Pinecone — each with basic configurable CRUD (or domain-equivalent) actions — so agents discover them via `catalog_connectors` and invoke them from FlowSpecs.  
 **Non-goal:** Destinations domain; Langfuse export MCP tools; typed per-connector steps; embedded Navbe-owned DuckDB analytics; changing MCP tool names; schedule-notifier refactor; Google OAuth begin/complete MCP; Supabase Auth/Storage/Realtime; Pinecone control-plane index admin.
 
@@ -211,15 +211,15 @@ uv run pytest -q
 
 ## Definition of Done
 
-- [ ] `resend` exposes only `send_email` (breaking vs HTTP-verb actions)
-- [ ] `mongodb`, `postgresql`, `langfuse`, `duckdb`, `clickhouse`, `supabase`, `google_calendar`, `pinecone` registered with CRUD-shaped actions and config schemas
-- [ ] Secrets use `{"$secret": "…"}`; never echo secret values in errors/logs
-- [ ] DuckDB uses user-supplied `db_path` only (no Navbe-owned default analytics DB)
-- [ ] Langfuse, Supabase, Google Calendar, and Pinecone use `httpx` only (no vendor SDKs)
-- [ ] Unit tests mock network/DB clients (except optional temp DuckDB file)
-- [ ] Catalog lists all new types; `architecture.md` + howto updated in the implementation PR
-- [ ] Guards green (`ruff`, `ty`, `lint-imports`, full pytest)
-- [ ] Schedule `ResendFailureNotifier` left unchanged (follow-up only)
+- [x] `resend` exposes only `send_email` (breaking vs HTTP-verb actions)
+- [x] `mongodb`, `postgresql`, `langfuse`, `duckdb`, `clickhouse`, `supabase`, `google_calendar`, `pinecone` registered with CRUD-shaped actions and config schemas
+- [x] Secrets use `{"$secret": "…"}`; never echo secret values in errors/logs
+- [x] DuckDB uses user-supplied `db_path` only (no Navbe-owned default analytics DB)
+- [x] Langfuse, Supabase, Google Calendar, and Pinecone use `httpx` only (no vendor SDKs)
+- [x] Unit tests mock network/DB clients (except optional temp DuckDB file)
+- [x] Catalog lists all new types; `architecture.md` + howto updated in the implementation PR
+- [x] Guards green (`ruff`, `ty`, `lint-imports`, full pytest)
+- [x] Schedule `ResendFailureNotifier` left unchanged (follow-up only)
 
 ## Notes
 

@@ -1,10 +1,11 @@
-"""Resend email API connector (API key from credentials via ``$secret``)."""
+"""Resend email connector — exclusive ``send_email`` action (not generic HTTP)."""
 
 from typing import Any
 
 import httpx
 
 from navbe.core.exceptions import ExecutionError
+from navbe.domains.connectors.implementations._payload import action_payload
 from navbe.domains.connectors.interfaces import ConnectorConfig
 from navbe.domains.connectors.registry import ConnectorRegistry
 
@@ -24,14 +25,11 @@ class ResendConfig(ConnectorConfig):
 
 @ConnectorRegistry.register("resend")
 class ResendConnector:
-    """HTTP client for api.resend.com; auth from resolved ``api_key`` (never env)."""
+    """Send email via api.resend.com; auth from resolved ``api_key`` (never env)."""
 
     config_schema = ResendConfig
     actions = {
-        "get": "GET request",
-        "post": "POST request (e.g. /emails)",
-        "put": "PUT request",
-        "delete": "DELETE request",
+        "send_email": "Send an email via Resend POST /emails",
     }
 
     def __init__(self, config: dict[str, Any]) -> None:
@@ -43,26 +41,51 @@ class ResendConnector:
         }
 
     async def test_connection(self) -> bool:
-        """Return True when Resend accepts the API key (GET /domains or /api-keys)."""
+        """Return True when Resend accepts the API key (GET /domains)."""
         try:
             async with httpx.AsyncClient(
                 base_url=_RESEND_BASE_URL,
                 headers=self._headers,
                 timeout=5,
             ) as client:
-                # Lightweight authenticated probe; 401/403 → False.
                 resp = await client.get("/domains")
                 return resp.status_code < 500 and resp.status_code != 401
         except httpx.HTTPError:
             return False
 
     async def execute(self, action: str, payload: dict[str, Any]) -> Any:
-        """Execute an HTTP action against api.resend.com."""
+        """Send an email; only ``send_email`` is supported."""
         if action not in self.actions:
             raise ExecutionError(
                 f"Unsupported action '{action}' for resend connector",
                 details={"action": action, "available": list(self.actions)},
             )
+
+        fields = action_payload(payload, "from", "to", "subject", "html", "text")
+        missing = [k for k in ("from", "to", "subject") if not fields.get(k)]
+        if missing:
+            raise ExecutionError(
+                "send_email requires from, to, and subject",
+                details={"missing": missing},
+            )
+        if not fields.get("html") and not fields.get("text"):
+            raise ExecutionError(
+                "send_email requires html or text",
+                details={"fields": ["html", "text"]},
+            )
+
+        body: dict[str, Any] = {
+            "from": fields["from"],
+            "to": fields["to"] if isinstance(fields["to"], list) else [fields["to"]],
+            "subject": fields["subject"],
+        }
+        if fields.get("html"):
+            body["html"] = fields["html"]
+        if fields.get("text"):
+            body["text"] = fields["text"]
+        for optional in ("cc", "bcc", "reply_to"):
+            if fields.get(optional) is not None:
+                body[optional] = fields[optional]
 
         try:
             async with httpx.AsyncClient(
@@ -70,27 +93,18 @@ class ResendConnector:
                 headers=self._headers,
                 timeout=self.config.timeout,
             ) as client:
-                resp = await client.request(
-                    action.upper(),
-                    payload.get("path", ""),
-                    json=payload.get("body"),
-                    params=payload.get("params"),
-                )
+                resp = await client.post("/emails", json=body)
                 resp.raise_for_status()
                 if not resp.content:
                     return {}
                 return resp.json()
         except httpx.HTTPStatusError as exc:
             raise ExecutionError(
-                f"Resend request failed with status {exc.response.status_code}",
-                details={
-                    "action": action,
-                    "path": payload.get("path", ""),
-                    "status_code": exc.response.status_code,
-                },
+                f"Resend send_email failed with status {exc.response.status_code}",
+                details={"action": action, "status_code": exc.response.status_code},
             ) from exc
         except httpx.HTTPError as exc:
             raise ExecutionError(
-                "Resend request failed",
-                details={"action": action, "path": payload.get("path", "")},
+                "Resend send_email failed",
+                details={"action": action},
             ) from exc

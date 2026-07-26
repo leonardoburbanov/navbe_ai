@@ -35,7 +35,7 @@ Each `src/navbe/domains/<name>/`:
 Implemented domain:
 
 - `steps` — standalone step contracts, registry, service, and built-in implementations.
-- `connectors` — standalone connector contracts, registry, service, HTTP + Resend.
+- `connectors` — standalone connector contracts, registry, service, HTTP + Resend + EPIC 19 built-ins.
 - `secrets` — credentials-JSON secret refs consumed by connector resolution.
 - `flows` — FlowSpec models, graph validation, filesystem + SQLite index.
 - `execution` — FlowSpec → LangGraph compile/run, checkpoints, HITL, run transcripts.
@@ -65,7 +65,18 @@ Built-ins registered in `StepRegistry`:
 Built-ins registered in `ConnectorRegistry`:
 
 - `http` — generic HTTP; API keys via `headers` + `{"$secret": "KEY"}`
-- `resend` — api.resend.com; `api_key: {"$secret": "RESEND_API_KEY"}`
+- `resend` — api.resend.com; exclusive `send_email`; `api_key: {"$secret": "RESEND_API_KEY"}`
+- `mongodb` — collection CRUD (`uri`, optional `database`)
+- `postgresql` — table CRUD (`dsn` or host fields)
+- `langfuse` — Public API via httpx (`host`, `public_key`, `secret_key`); `create`/`read` only
+- `duckdb` — external user-owned file path (`db_path`); not a Navbe-owned analytics sink
+- `clickhouse` — parameterized CRUD (host/user/password/database)
+- `supabase` — PostgREST table CRUD (`url`, `service_role_key`)
+- `google_calendar` — Calendar event CRUD via OAuth refresh token
+- `pinecone` — data-plane upsert/fetch|query/delete (`api_key`, index `host`)
+
+Non-HTTP connectors are invoked from flows with the `http_request` step where
+`method` is the action name and `body_template` holds the action payload.
 
 ## Secrets domain
 

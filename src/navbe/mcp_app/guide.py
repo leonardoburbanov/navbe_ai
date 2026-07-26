@@ -99,9 +99,18 @@ from that file — not from env. Use `secret_hint` / `secret_list` for masked pr
 
 - `http` — base_url + optional headers/timeout; put API keys in headers as
   `{"Authorization": {"$secret": "CRM_API_KEY"}}` (credentials JSON only).
-- `resend` — api.resend.com; config `api_key` must be
-  `{"$secret": "RESEND_API_KEY"}` (store with `secret_set` / `--app resend`).
-  Use with `http_request` (e.g. method `post`, path `/emails`).
+- `resend` — exclusive `send_email` (not generic HTTP verbs); config `api_key`
+  must be `{"$secret": "RESEND_API_KEY"}`. Call via `http_request` with
+  `method: "send_email"` and email fields in `body_template`.
+- `mongodb` / `postgresql` / `duckdb` / `clickhouse` / `supabase` — CRUD actions
+  (`create`/`read`/`update`/`delete`); `method` = action name, payload in
+  `body_template`.
+- `langfuse` — Public API (`create` ingestion, `read` traces); keys via `$secret`.
+- `google_calendar` — event CRUD; `client_id` / `client_secret` / `refresh_token`.
+- `pinecone` — upsert/fetch|query/delete; `api_key` + index `host`.
+
+For non-`http` connectors, `http_request.path` is unused; put action fields in
+`body_template`.
 
 ## Tool map
 

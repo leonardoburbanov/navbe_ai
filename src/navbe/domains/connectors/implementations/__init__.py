@@ -1,8 +1,25 @@
-"""Concrete connector implementations.
+from navbe.domains.connectors.implementations import (
+    clickhouse,
+    duckdb_file,
+    google_calendar,
+    http,
+    langfuse,
+    mongodb,
+    pinecone,
+    postgresql,
+    resend,
+    supabase,
+)
 
-Import this package to register all built-in connector types.
-"""
-
-from navbe.domains.connectors.implementations import http, resend
-
-__all__ = ["http", "resend"]
+__all__ = [
+    "clickhouse",
+    "duckdb_file",
+    "google_calendar",
+    "http",
+    "langfuse",
+    "mongodb",
+    "pinecone",
+    "postgresql",
+    "resend",
+    "supabase",
+]
