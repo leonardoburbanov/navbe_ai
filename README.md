@@ -7,13 +7,13 @@ Local-first workflow orchestration for AI agents. One daemon serves **MCP**, **s
 **macOS / Linux / WSL**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.ps1 | iex
 ```
 
 That installs `navbe`, starts `navbe serve` in the background, and writes Cursor / Claude Desktop MCP config to:
@@ -39,8 +39,8 @@ navbe bootstrap
 ## Contributor checkout
 
 ```bash
-git clone https://github.com/leonardoburbanov/navbe_ai_v0.1.git
-cd navbe_ai_v0.1
+git clone https://github.com/leonardoburbanov/navbe_ai.git
+cd navbe_ai
 uv sync
 uv run navbe bootstrap
 ```

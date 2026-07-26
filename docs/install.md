@@ -12,13 +12,13 @@ and Cursor / Claude point at `http://127.0.0.1:8000/mcp`.
 ### macOS / Linux / WSL
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.ps1 | iex
 ```
 
 ### Direct uv (no script)
@@ -40,7 +40,7 @@ $env:NAVBE_REF = "v0.1.0"
 irm …/scripts/install.ps1 | iex
 
 # or
-uv tool install git+https://github.com/leonardoburbanov/navbe_ai_v0.1.git@v0.1.0
+uv tool install git+https://github.com/leonardoburbanov/navbe_ai.git@v0.1.0
 navbe bootstrap
 ```
 
@@ -49,7 +49,7 @@ Optional overrides for the scripts:
 | Env var | Default | Purpose |
 | --- | --- | --- |
 | `NAVBE_FROM_GIT` | unset | Force git install instead of PyPI |
-| `NAVBE_REPO` | `https://github.com/leonardoburbanov/navbe_ai_v0.1.git` | Git remote |
+| `NAVBE_REPO` | `https://github.com/leonardoburbanov/navbe_ai.git` | Git remote |
 | `NAVBE_REF` | (unset) | Tag or branch (implies git install) |
 
 ### Verify
@@ -65,8 +65,8 @@ Then restart Cursor / Claude Desktop.
 ## Contributor install (checkout)
 
 ```bash
-git clone https://github.com/leonardoburbanov/navbe_ai_v0.1.git
-cd navbe_ai_v0.1
+git clone https://github.com/leonardoburbanov/navbe_ai.git
+cd navbe_ai
 uv sync
 uv run navbe bootstrap
 ```
@@ -157,13 +157,13 @@ GitHub Actions builds, attaches assets, and publishes to PyPI (Trusted Publisher
 **macOS / Linux / WSL**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.sh | bash
 ```
 
 **Windows**
 
 ```powershell
-irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.ps1 | iex
 ```
 
 **Then**

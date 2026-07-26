@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Install Navbe CLI + start local daemon (MCP + schedules) in one shot.
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.sh | bash
 #   # or after a release:
-#   curl -fsSL https://github.com/leonardoburbanov/navbe_ai_v0.1/releases/latest/download/install.sh | bash
+#   curl -fsSL https://github.com/leonardoburbanov/navbe_ai/releases/latest/download/install.sh | bash
 #
 # Env:
 #   NAVBE_FROM_GIT=1          install from git instead of PyPI
 #   NAVBE_REPO / NAVBE_REF    git remote + tag/branch when NAVBE_FROM_GIT=1
 set -euo pipefail
 
-REPO="${NAVBE_REPO:-https://github.com/leonardoburbanov/navbe_ai_v0.1.git}"
+REPO="${NAVBE_REPO:-https://github.com/leonardoburbanov/navbe_ai.git}"
 REF="${NAVBE_REF:-}"
 FROM_GIT="${NAVBE_FROM_GIT:-}"
 

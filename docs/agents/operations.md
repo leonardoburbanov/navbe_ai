@@ -7,7 +7,7 @@ End-user and contributor install, CLI surface, and release assets:
 
 ```bash
 # end-user
-curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai_v0.1/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leonardoburbanov/navbe_ai/main/scripts/install.sh | bash
 # Windows: irm …/scripts/install.ps1 | iex
 
 navbe setup
