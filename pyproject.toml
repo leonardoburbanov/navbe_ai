@@ -6,6 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Leonardo Burbano", email = "leofr7nco@hotmail.com" }
 ]
+license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "aiofiles>=25.1.0",
