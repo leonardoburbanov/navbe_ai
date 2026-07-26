@@ -1,7 +1,6 @@
 """Use-cases for schedule CRUD, due firing, and failure accounting."""
 
-from __future__ import annotations
-
+import builtins
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -97,7 +96,7 @@ class ScheduleService:
         """Load a schedule by id."""
         return await self._repository.get(schedule_id)
 
-    async def list(self) -> list[ScheduleMetadata]:
+    async def list(self) -> builtins.list[ScheduleMetadata]:
         """List saved schedule metadata."""
         return await self._repository.list()
 
@@ -120,7 +119,7 @@ class ScheduleService:
         await self._repository.update(updated)
         return updated
 
-    async def list_due(self, now: datetime | None = None) -> list[ScheduleSpec]:
+    async def list_due(self, now: datetime | None = None) -> builtins.list[ScheduleSpec]:
         """Return enabled schedules that are due."""
         return await self._repository.list_due(now or datetime.now(UTC))
 

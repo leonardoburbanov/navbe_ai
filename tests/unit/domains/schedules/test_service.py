@@ -1,10 +1,9 @@
 """Tests for ScheduleService failure accounting and CRUD helpers."""
 
+import builtins
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock
-
-import pytest
 
 from navbe.domains.execution.models import RunState, RunStatus
 from navbe.domains.flows.models import FlowSpec
@@ -36,7 +35,7 @@ class FakeScheduleRepo:
     async def get(self, schedule_id: str) -> ScheduleSpec:
         return self.items[schedule_id]
 
-    async def list(self) -> list[ScheduleMetadata]:
+    async def list(self) -> builtins.list[ScheduleMetadata]:
         return []
 
     async def update(self, schedule: ScheduleSpec) -> ScheduleMetadata:
@@ -60,12 +59,12 @@ class FakeScheduleRepo:
     async def delete_index(self, schedule_id: str) -> None:
         self.items.pop(schedule_id, None)
 
-    async def list_due(self, now: datetime) -> list[ScheduleSpec]:
-        return [
-            s
-            for s in self.items.values()
-            if s.enabled and s.next_run_at is not None and s.next_run_at <= now
-        ]
+    async def list_due(self, now: datetime) -> builtins.list[ScheduleSpec]:
+        due: builtins.list[ScheduleSpec] = []
+        for s in self.items.values():
+            if s.enabled and s.next_run_at is not None and s.next_run_at <= now:
+                due.append(s)
+        return due
 
 
 class FakeFlowService:

@@ -1,5 +1,6 @@
 """Filesystem + SQLite persistence for schedule specs."""
 
+import builtins
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -126,7 +127,7 @@ class FileSystemScheduleRepository:
             content = await handle.read()
         return ScheduleSpec.model_validate_json(content)
 
-    async def list(self) -> list[ScheduleMetadata]:
+    async def list(self) -> builtins.list[ScheduleMetadata]:
         """Return all indexed schedule metadata."""
         async with self._session_factory() as session:
             result = await session.execute(select(schedules_index))
@@ -274,7 +275,7 @@ class FileSystemScheduleRepository:
             )
             await session.commit()
 
-    async def list_due(self, now: datetime) -> list[ScheduleSpec]:
+    async def list_due(self, now: datetime) -> builtins.list[ScheduleSpec]:
         """Return enabled schedules whose next_run_at is due."""
         now_naive = _naive_utc(now)
         async with self._session_factory() as session:
@@ -287,7 +288,7 @@ class FileSystemScheduleRepository:
             )
             ids = [row.schedule_id for row in result]
 
-        due: list[ScheduleSpec] = []
+        due: builtins.list[ScheduleSpec] = []
         for schedule_id in ids:
             due.append(await self.get(schedule_id))
         return due

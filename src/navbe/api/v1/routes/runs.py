@@ -30,6 +30,7 @@ async def start_run(
         run_id = await service.start(body.flow_id, body.initial_input)
     except NavbeError as exc:
         raise to_http_exception(exc) from exc
+    assert run_id is not None
     return {"run_id": run_id}
 
 

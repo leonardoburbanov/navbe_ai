@@ -1,0 +1,13 @@
+{
+  "schedule_id": "resend_mcp_test_every_5min",
+  "flow_id": "resend_mcp_test",
+  "name": "",
+  "when": "*/5 * * * *",
+  "enabled": false,
+  "notify": null,
+  "next_run_at": "2026-07-26T00:25:00Z",
+  "last_run_at": null,
+  "last_run_id": null,
+  "consecutive_failures": 0,
+  "notify_latched": false
+}

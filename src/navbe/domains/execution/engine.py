@@ -78,7 +78,8 @@ class LangGraphEngine:
         try:
             prior = await self._repository.get_state(run_id)
             return prior.trigger, prior.schedule_id
-        except NotFoundError:
+        except Exception:
+            # Missing prior state (NotFoundError / KeyError from fakes) → defaults.
             return "manual", None
 
     async def run(self, flow_spec: FlowSpec, run_id: str, initial_input: Any) -> RunState:

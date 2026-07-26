@@ -202,7 +202,9 @@ def register_tools(
             timeout=timeout,
         )
         if not wait:
+            assert run_id is not None
             return {"run_id": run_id, "status": "started"}
+        assert run_id is not None
         detail = await run_service.detail(run_id)
         return _run_detail_payload(detail)
 

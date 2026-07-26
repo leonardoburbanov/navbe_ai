@@ -1,5 +1,6 @@
 """Schedule repository and notifier contracts."""
 
+import builtins
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
@@ -18,7 +19,7 @@ class ScheduleRepository(Protocol):
         """Load a schedule by id."""
         ...
 
-    async def list(self) -> list[ScheduleMetadata]:
+    async def list(self) -> builtins.list[ScheduleMetadata]:
         """List indexed schedule metadata."""
         ...
 
@@ -34,7 +35,7 @@ class ScheduleRepository(Protocol):
         """Remove a schedule_id from the index after its directory was deleted."""
         ...
 
-    async def list_due(self, now: datetime) -> list[ScheduleSpec]:
+    async def list_due(self, now: datetime) -> builtins.list[ScheduleSpec]:
         """Return enabled schedules with ``next_run_at <= now``."""
         ...
 

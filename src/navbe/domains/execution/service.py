@@ -171,22 +171,28 @@ class RunService:
             except asyncio.CancelledError:
                 pass
 
-        # Engine may already have persisted CANCELLED; re-read.
+        # Live cancel may already have persisted CANCELLED; orphaned pending
+        # runs (no in-process task) still need an explicit write.
         try:
-            return await self._engine.get_status(run_id)
+            latest = await self._engine.get_status(run_id)
+            if latest.status not in ACTIVE_RUN_STATUSES:
+                return latest
+            state = latest
         except Exception:
-            now = datetime.now(UTC)
-            cancelled = state.model_copy(
-                update={
-                    "status": RunStatus.CANCELLED,
-                    "error": "cancelled",
-                    "updated_at": now,
-                }
-            )
-            repo = getattr(self._engine, "repository", None)
-            if repo is not None:
-                await repo.save_state(run_id, cancelled)
-            return cancelled
+            pass
+
+        now = datetime.now(UTC)
+        cancelled = state.model_copy(
+            update={
+                "status": RunStatus.CANCELLED,
+                "error": "cancelled",
+                "updated_at": now,
+            }
+        )
+        repo = getattr(self._engine, "repository", None)
+        if repo is not None:
+            await repo.save_state(run_id, cancelled)
+        return cancelled
 
     async def status(self, run_id: str) -> RunState:
         """Return the latest run status."""

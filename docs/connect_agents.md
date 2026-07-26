@@ -146,8 +146,9 @@ On macOS/Linux, replace the directory with something like
 so it re-spawns the subprocess.
 
 **Verify:** Claude’s MCP / connector UI shows **navbe** as connected, with tools
-including `navbe_howto`, `catalog_steps`, `flow_list`, `secret_set`, `sync_pull`
-(flows/`<id>`/flow.json only — never runs or credentials).
+including `navbe_howto`, `catalog_steps`, `flow_list`, `schedule_list`,
+`secret_set`, `sync_pull` (flows/`<id>`/flow.json + schedules/`<id>`/schedule.json
+— never runs or credentials).
 
 Still upload the **navbe-flows** skill (Option A skill-only) so Claude follows the
 discover → validate → create → ask → run loop automatically.
@@ -161,6 +162,7 @@ If not, say:
 ```
 Use the navbe-flows skill. Call navbe_howto first, then catalog_steps and
 flow_list. Prefer tools over navbe:// resources. Ask me before flow_run.
+For recurring runs use schedule_create (needs navbe serve to fire).
 ```
 
 Or open the MCP prompt named `navbe_howto` if your Claude build lists prompts.

@@ -9,6 +9,7 @@ ALLOWED_CALL_NAMES = {
     "Depends",
     "get_flow_service",
     "get_run_service",
+    "get_schedule_service",
     "create",
     "get",
     "list",
@@ -16,6 +17,10 @@ ALLOWED_CALL_NAMES = {
     "start",
     "status",
     "resume",
+    "cancel",
+    "enable",
+    "disable",
+    "list_schedule_runs",
 }
 
 
