@@ -142,5 +142,5 @@ Never sync runs, credentials, OAuth tokens, archived `flow.vN.json`, or step Pyt
 
 - Do not run flows unless the user confirms.
 - If MCP tools are missing (`navbe_howto`, `catalog_steps`), tell the user to run `navbe status` / `navbe bootstrap`, then restart Claude Desktop.
-- Do not claim Langfuse/DuckDB export tools exist unless those tools are listed in the live MCP tool list.
+- Do not claim Langfuse export / analytics-destination tools exist unless those tools are listed in the live MCP tool list.
 - Schedules require `navbe serve` (same daemon as MCP); say so when creating or debugging schedules.

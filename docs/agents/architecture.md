@@ -206,6 +206,6 @@ Distribution (install scripts, `uv tool install`, GitHub Releases / PyPI): [../i
 ## Persistence split (target)
 
 - **SQLite** (`aiosqlite` + SQLAlchemy async) — app/control-plane state
-- **DuckDB / CSV** — analytics destinations (not in tree yet)
+- **Analytics** — external / out-of-process (not embedded in Navbe; independent DuckDB later)
 
-See DuckDB caveats in [AGENTS.md](../../AGENTS.md).
+See coding rules in [AGENTS.md](../../AGENTS.md).

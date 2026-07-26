@@ -72,4 +72,5 @@ Prefer code as source of truth. No speculative docs for packages that do not exi
 - [EPIC 16 — Per-app credentials](epics/epic-16.md) — done (app label, masked hint, rotate via CLI/MCP)
 - [EPIC 17 — Run UX](epics/epic-17.md) — done (CLI steps table + MCP Mermaid diagram)
 - [EPIC 18 — Schedule Flows](epics/epic-18.md) — done (schedules domain + serve tick + cancel + Resend notify)
+- [EPIC 19 — Built-in Connectors (CRUD)](epics/epic-19.md) — planned (Resend `send_email`, MongoDB, PostgreSQL, Langfuse, external DuckDB, ClickHouse, Supabase, Google Calendar, Pinecone)
 - See also [../install.md](../install.md) for CLI distribution and [../connect_agents.md](../connect_agents.md) for Claude Desktop / Cursor setup

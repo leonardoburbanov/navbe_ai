@@ -4,7 +4,7 @@ Start here for project context. Coding rules live in [AGENTS.md](../../AGENTS.md
 
 ## What this is
 
-Local-first workflow orchestration for AI agents (MCP). Control-plane state in SQLite; analytics destinations (DuckDB/CSV) come in later EPICs.
+Local-first workflow orchestration for AI agents (MCP). Control-plane state in SQLite. Analytics is out of process (independent store later — not an embedded DuckDB sink).
 
 ## Install
 

@@ -30,7 +30,7 @@ This epic closes that discovery gap so the MCP surface matches what the domains 
 
 - `flow_delete` / hard delete of run history
 - Listing secret keys or resolved secret values
-- Destinations, DuckDB query tools, Langfuse connectors
+- Destinations, analytics query tools, Langfuse connectors
 - Renaming existing tools again (names stay underscored: `^[a-zA-Z0-9_-]{1,64}$`)
 - Changing catalog JSON shape from EPIC 6/7
 

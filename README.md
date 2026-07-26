@@ -15,7 +15,7 @@
 
 Navbe lets Cursor, Claude Desktop, and other MCP clients **compose flows, run them, schedule them, and keep secrets local** — without a cloud control plane in the critical path.
 
-Control-plane state lives in **SQLite**. Analytics sinks (e.g. DuckDB / CSV) stay on disk. Agents talk to one process: `navbe serve` exposes **MCP at `/mcp`**, the schedule ticker, and the REST API.
+Control-plane state lives in **SQLite**. Analytics stays out of process (an independent store later — not an embedded DuckDB sink). Agents talk to one process: `navbe serve` exposes **MCP at `/mcp`**, the schedule ticker, and the REST API.
 
 ---
 
@@ -88,7 +88,7 @@ flowchart LR
   API["FastAPI /api/v1"]
   Domains["Domains<br/>flows · execution · schedules · …"]
   SQLite[(SQLite)]
-  Disk[(Flows · secrets · DuckDB)]
+  Disk[(Flows · secrets)]
 
   Agent -->|"tools + resources"| MCP
   CLI --> Daemon

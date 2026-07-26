@@ -19,13 +19,11 @@ Navbe is a local-first workflow orchestration engine operated by AI agents over 
 - Domain package pattern — `models.py` / `interfaces.py` / `service.py` (even before domain folders exist)
 - Layering — `.importlinter` contract: `mcp_app` | `api` → `domains` → `core`
 - Tooling — `uv`, ruff, ty, pytest, lint-imports, CI workflow
-- DuckDB destination caveats (product rules; destinations not implemented yet)
-
 ## Defer until the matching EPIC lands
 
 - Per-domain pages (execution, catalog)
 - MCP tool catalogs and HTTP route maps
-- Destination writers, LangGraph graphs, SQLite table schemas
+- External analytics wiring, LangGraph graphs, SQLite table schemas
 
 ## Maintenance
 

@@ -2,7 +2,7 @@
 
 Local-first workflow orchestration engine operated by AI agents over MCP.
 
-Agents sync data (e.g. Langfuse traces → DuckDB/CSV), schedule recurring flows, and query results — without a cloud control plane in the critical path.
+Agents sync data (e.g. Langfuse traces → external analytics), schedule recurring flows, and query results — without a cloud control plane in the critical path.
 
 This file is always-on guidance for coding agents working in this repo.
 
@@ -23,7 +23,8 @@ must-follow rules only; put narrative docs in `docs/agents/`.
 | Agent surface | FastMCP |
 | Orchestration | LangGraph |
 | App state | SQLite via `aiosqlite` |
-| Analytics destinations | DuckDB (and CSV) |
+| In-step SQL | DuckDB in-memory (`transform` step only) |
+| Analytics destinations | External / out-of-process (not embedded in Navbe) |
 | Tests | `pytest` + `pytest-asyncio` |
 
 ---
@@ -40,7 +41,7 @@ src/navbe/
     schedules/      # time-based triggers + failure notify
     execution/      # run lifecycle, modes, history
     secrets/        # credential storage/resolution
-    catalog/        # discovery of connectors, destinations, flows
+    catalog/        # discovery of connectors, flows
     sync/           # GitHub workspace sync (flows + schedules; OAuth)
   api/              # FastAPI routes (thin; call services)
   mcp_app/          # FastMCP tools (thin; call services)
@@ -68,8 +69,8 @@ Every domain package under `src/navbe/domains/<name>/` follows this split:
 
 Rules:
 
-- Services take Protocols in `__init__` (or function args) — no hard imports of SQLite/DuckDB/HTTP clients inside domain services.
-- Concrete adapters live outside the domain (e.g. `db/`, `destinations/`, connector clients).
+- Services take Protocols in `__init__` (or function args) — no hard imports of SQLite/HTTP clients inside domain services.
+- Concrete adapters live outside the domain (e.g. `db/`, connector clients).
 - Prefer extending an existing domain over inventing a new top-level package.
 - Do not cross-import another domain's `service.py` for convenience; call through a Protocol or move shared logic up.
 
@@ -132,7 +133,7 @@ class ConnectorService:
 ```
 
 ```python
-# ❌ service imports concrete SQLite repo / DuckDB path directly
+# ❌ service imports concrete SQLite repo directly
 from navbe.db.sqlite_connectors import SqliteConnectorRepo
 ```
 
@@ -143,7 +144,7 @@ from navbe.db.sqlite_connectors import SqliteConnectorRepo
 **Always do**
 
 - Put Pydantic shapes in `models.py`, ports in `interfaces.py`, use-cases in `service.py`.
-- Persist app/control-plane state in SQLite; use DuckDB only as an analytics destination (or query surface over synced data).
+- Persist app/control-plane state in SQLite. Do not embed an analytics DuckDB (file or server) inside Navbe — analytics lives in an independent instance later.
 - Keep secrets out of logs, MCP tool responses, traces, and git. Resolve via the `secrets` domain.
 - Make MCP tool handlers validate inputs, call a domain service, return structured results.
 - For workflow runs: default `mode="append"` (upsert by `id`). Use `mode="overwrite"` only when replacing all rows is intentional.
@@ -151,7 +152,7 @@ from navbe.db.sqlite_connectors import SqliteConnectorRepo
 **Ask first**
 
 - New domain packages beyond those listed in Layout (including `sync`).
-- New destination types beyond DuckDB / CSV.
+- Wiring Navbe to an external analytics store (independent DuckDB or otherwise).
 - Schema migrations that drop or rename persisted columns.
 - Changing MCP tool names or argument shapes (agents depend on stability).
 
@@ -161,18 +162,7 @@ from navbe.db.sqlite_connectors import SqliteConnectorRepo
 - Hit production external APIs from unit tests (mock at the Protocol boundary).
 - Duplicate business logic in both FastAPI routes and MCP tools — share the service.
 - Store Langfuse (or other) secret keys in flow definitions or destination configs in plaintext outside the secrets domain.
-- Treat DuckDB destination columns as typed timestamps/numbers without casting (see below).
-
----
-
-## DuckDB destination caveats
-
-When writing or querying SQL against a Navbe traces/observations destination:
-
-- Columns are stored as `VARCHAR` — `CAST(column AS TIMESTAMP)` (or other type) before date/numeric functions.
-- `run_workflow` / scheduled runs default to `mode="append"`: upsert by `id`, no duplicates. `overwrite` replaces all rows.
-- “Deleted” counts in run output are only meaningful for `overwrite`. In append mode, a missing id means it was not in the latest fetched page — not that the source deleted it.
-- Through `query_destination` / `query_workflow_destination`, the table name is always `traces` or `observations`, regardless of file/table config on the destination.
+- Add an embedded DuckDB analytics sink (local `.duckdb` file owned by Navbe as a destination).
 
 ---
 
@@ -181,14 +171,12 @@ When writing or querying SQL against a Navbe traces/observations destination:
 Agents operate Navbe through tools roughly in this order of use:
 
 1. Connectors — register/query external sources.
-2. Destinations — DuckDB or CSV sinks.
-3. Flows/workflows — compose graphs; schedule via `schedule_*` (`when`: `+30s` / `+1h` / cron).
-4. Execution — `flow_run`, `flow_status`, `flow_cancel`, list runs.
-5. Query — `query_destination` / `query_workflow_destination` (paginated SELECT).
+2. Flows/workflows — compose graphs; schedule via `schedule_*` (`when`: `+30s` / `+1h` / cron).
+3. Execution — `flow_run`, `flow_status`, `flow_cancel`, list runs.
 
 Schedules fire only while `navbe serve` is up (same process as HTTP MCP at
-`/mcp`). Prefer querying a synced DuckDB destination over calling the live
-source for analytics.
+`/mcp`). Analytics querying against an independent DuckDB (or other store) is
+out of band from this daemon for now.
 
 ---
 
@@ -197,15 +185,14 @@ source for analytics.
 - Secrets domain owns storage and resolution; never echo secret values in API/MCP responses.
 - Prefer `secret_set` / local `navbe_credentials.json` over committing keys; file is gitignored.
   `$secret` resolves from that file only — never from env / `.env`.
-- Local data dirs (SQLite, DuckDB files, exports, credentials JSON) stay on disk; do not assume network share semantics.
-- Read-only SQL for destination query tools — no DDL/DML via query endpoints.
+- Local data dirs (SQLite, credentials JSON) stay on disk; do not assume network share semantics.
 
 ---
 
 ## Testing (when asked to add tests)
 
 - `pytest` + `pytest-asyncio`; mark async tests with `@pytest.mark.asyncio`.
-- Test domain services with fake Protocol implementations — not real DuckDB/network.
+- Test domain services with fake Protocol implementations — not real network.
 - One focused test file per behavior change is enough; no fixture megafw.
 
 ---
