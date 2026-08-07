@@ -203,9 +203,16 @@ pub fn run() {
             log_path: Mutex::new(None),
         })
         .setup(|app| {
+            // Keep setup non-blocking: reqwest::blocking on the UI thread can
+            // stall/fail window creation on Windows.
             let handle = app.handle().clone();
-            let state = app.state::<DaemonState>();
-            ensure_daemon(&handle, &state);
+            thread::spawn(move || {
+                let state = handle.state::<DaemonState>();
+                ensure_daemon(&handle, &state);
+            });
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.set_focus();
+            }
             Ok(())
         })
         .on_window_event(|window, event| {

@@ -12,10 +12,13 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Navbe",
         "width": 1280,
         "height": 860,
-        "resizable": true
+        "resizable": true,
+        "focus": true,
+        "visible": true
       }
     ],
     "security": {
