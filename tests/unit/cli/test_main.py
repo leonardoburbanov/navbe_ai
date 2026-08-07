@@ -51,7 +51,8 @@ def test_bare_navbe_tty_runs_slash_session(monkeypatch) -> None:
 def test_serve_help() -> None:
     """Serve subcommand documents host/port."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["serve", "--help"])
+    # Rich help splits "--host" across ANSI spans unless color is off.
+    result = runner.invoke(cli, ["serve", "--help"], color=False)
     assert result.exit_code == 0
     assert "--host" in result.output
     assert "--port" in result.output

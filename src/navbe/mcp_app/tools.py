@@ -1,14 +1,10 @@
 """Thin MCP tool adapters over FlowService, RunService, and CatalogService."""
 
-
-import pydantic
 from fastmcp import FastMCP
 
-from navbe.core.exceptions import ValidationError
 from navbe.domains.catalog.service import CatalogService
 from navbe.domains.execution.payloads import run_detail_payload
 from navbe.domains.execution.service import RunService
-from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 from navbe.domains.schedules.service import ScheduleService
 from navbe.domains.secrets.service import SecretsService
@@ -149,14 +145,7 @@ def register_tools(
     @mcp_tool_error_handler
     async def flow_validate(spec: dict) -> dict:
         """Validate a FlowSpec without saving. Use before flow_create / flow_update."""
-        try:
-            flow_spec = FlowSpec.model_validate(spec)
-        except pydantic.ValidationError as exc:
-            raise ValidationError(
-                "Invalid FlowSpec structure",
-                details={"errors": exc.errors()},
-            ) from exc
-        result = flow_service.validate(flow_spec)
+        result = flow_service.validate(spec)
         return result.model_dump()
 
     @mcp.tool(name="flow_update")

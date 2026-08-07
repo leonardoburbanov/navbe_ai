@@ -3,7 +3,9 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from navbe.core.exceptions import NotFoundError
+import pydantic
+
+from navbe.core.exceptions import NotFoundError, ValidationError
 from navbe.domains.execution.models import RunDetail, RunState, RunStatus
 from navbe.domains.flows.models import FlowMetadata, FlowSpec
 from navbe.domains.flows.validator import ValidationResult
@@ -109,6 +111,14 @@ class FakeFlowService:
         return list(self.meta.values())
 
     def validate(self, flow_spec: Any) -> ValidationResult:
+        if isinstance(flow_spec, dict):
+            try:
+                FlowSpec.model_validate(flow_spec)
+            except pydantic.ValidationError as exc:
+                raise ValidationError(
+                    "Invalid FlowSpec structure",
+                    details={"errors": exc.errors()},
+                ) from exc
         return self.validate_result
 
 
