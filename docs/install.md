@@ -28,6 +28,29 @@ uv tool install navbe
 navbe bootstrap
 ```
 
+### Desktop app (Windows)
+
+Download the **Navbe** installer from the GitHub Release assets for a `v*` tag
+(NSIS `.exe` or MSI). Install and launch — the app starts the bundled local
+daemon on `http://127.0.0.1:8000` (or attaches if `navbe serve` is already up).
+
+Same data home as the CLI (`~/.navbe` / `%USERPROFILE%\.navbe`): credentials,
+flows, schedules, and MCP URL stay shared with agents.
+
+Contributor / release build:
+
+```powershell
+# from repo root (needs Rust + MSVC Build Tools + Node/pnpm)
+uv sync --all-groups
+powershell -File scripts/build_sidecar.ps1
+cd desktop
+pnpm install
+pnpm tauri build
+```
+
+Artifacts land under `desktop/src-tauri/target/release/bundle/`.
+CI: [`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml).
+
 ### Pin a version / install from git
 
 ```bash
@@ -148,9 +171,9 @@ GitHub Actions builds, attaches assets, and publishes to PyPI (Trusted Publisher
 
 ### Out of scope (today)
 
-- Windows desktop / tray app
-- Standalone PyInstaller branded `.exe`
 - OS service generators (pidfile daemon is enough)
+- Signed / auto-updating desktop builds
+- macOS / Linux desktop installers (Windows only in EPIC 20)
 
 ## Website copy (paste into your install page)
 

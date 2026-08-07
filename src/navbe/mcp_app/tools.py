@@ -6,7 +6,7 @@ from fastmcp import FastMCP
 
 from navbe.core.exceptions import ValidationError
 from navbe.domains.catalog.service import CatalogService
-from navbe.domains.execution.models import RunDetail
+from navbe.domains.execution.payloads import run_detail_payload
 from navbe.domains.execution.service import RunService
 from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
@@ -16,14 +16,6 @@ from navbe.domains.sync.github_auth import GitHubAuthService
 from navbe.domains.sync.service import SyncService
 from navbe.mcp_app.errors import mcp_tool_error_handler
 from navbe.mcp_app.guide import NAVBE_HOWTO
-
-
-def _run_detail_payload(detail: RunDetail) -> dict:
-    """Flatten RunDetail into the MCP response shape (state + steps + diagram)."""
-    payload = detail.state.model_dump(mode="json")
-    payload["steps"] = [step.model_dump(mode="json") for step in detail.steps]
-    payload["diagram"] = detail.diagram
-    return payload
 
 
 def register_tools(
@@ -206,7 +198,7 @@ def register_tools(
             return {"run_id": run_id, "status": "started"}
         assert run_id is not None
         detail = await run_service.detail(run_id)
-        return _run_detail_payload(detail)
+        return run_detail_payload(detail)
 
     @mcp.tool(name="flow_status")
     @mcp_tool_error_handler
@@ -217,7 +209,7 @@ def register_tools(
         completed, failed, or paused — do not omit it.
         """
         detail = await run_service.detail(run_id)
-        return _run_detail_payload(detail)
+        return run_detail_payload(detail)
 
     @mcp.tool(name="flow_resume")
     @mcp_tool_error_handler
@@ -228,7 +220,7 @@ def register_tools(
         """
         await run_service.resume(run_id, decision)
         detail = await run_service.detail(run_id)
-        return _run_detail_payload(detail)
+        return run_detail_payload(detail)
 
     @mcp.tool(name="flow_list_runs")
     @mcp_tool_error_handler

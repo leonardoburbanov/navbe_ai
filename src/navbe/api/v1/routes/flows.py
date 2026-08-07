@@ -2,11 +2,13 @@
 
 from typing import Annotated, Any
 
+import pydantic
 from fastapi import APIRouter, Depends
 
 from navbe.api.errors import to_http_exception
 from navbe.core.exceptions import NavbeError, ValidationError
 from navbe.dependencies import get_flow_service
+from navbe.domains.flows.models import FlowSpec
 from navbe.domains.flows.service import FlowService
 
 router = APIRouter()
@@ -23,6 +25,25 @@ async def create_flow(
     except NavbeError as exc:
         raise to_http_exception(exc) from exc
     return metadata.model_dump(mode="json")
+
+
+@router.post("/validate")
+async def validate_flow(
+    spec: dict[str, Any],
+    service: Annotated[FlowService, Depends(get_flow_service)],
+) -> dict[str, Any]:
+    """Validate a FlowSpec without saving."""
+    try:
+        flow_spec = FlowSpec.model_validate(spec)
+    except pydantic.ValidationError as exc:
+        raise to_http_exception(
+            ValidationError(
+                "Invalid FlowSpec structure",
+                details={"errors": exc.errors()},
+            )
+        ) from exc
+    result = service.validate(flow_spec)
+    return result.model_dump()
 
 
 @router.get("/{flow_id}")

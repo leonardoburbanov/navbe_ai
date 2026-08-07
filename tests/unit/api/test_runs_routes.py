@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from navbe.api.v1.routes import runs as runs_routes
 from navbe.core.exceptions import NotFoundError
 from navbe.dependencies import get_run_service
-from navbe.domains.execution.models import RunState, RunStatus
+from navbe.domains.execution.models import RunDetail, RunState, RunStatus, StepExecution
 
 
 class FakeRunService:
@@ -26,6 +26,18 @@ class FakeRunService:
             created_at=now,
             updated_at=now,
         )
+        self.detail_result = RunDetail(
+            state=self.state,
+            steps=[
+                StepExecution(
+                    node_id="n1",
+                    step_type="set_var",
+                    status="completed",
+                    latency_ms=1.0,
+                )
+            ],
+            diagram="flowchart TD\n  n1",
+        )
 
     async def start(self, flow_id: str, initial_input: Any = None) -> str:
         if self.start_error is not None:
@@ -35,10 +47,25 @@ class FakeRunService:
     async def status(self, run_id: str) -> RunState:
         return self.state
 
+    async def detail(self, run_id: str) -> RunDetail:
+        return self.detail_result
+
+    async def list_runs(self, flow_id: str | None = None) -> list[RunState]:
+        return [self.state]
+
     async def resume(self, run_id: str, decision: dict) -> RunState:
         self.state.status = (
             RunStatus.COMPLETED if decision.get("approved") else RunStatus.FAILED
         )
+        self.detail_result = RunDetail(
+            state=self.state,
+            steps=self.detail_result.steps,
+            diagram=self.detail_result.diagram,
+        )
+        return self.state
+
+    async def cancel(self, run_id: str) -> RunState:
+        self.state.status = RunStatus.CANCELLED
         return self.state
 
 
@@ -81,21 +108,35 @@ async def test_start_run_unknown_flow_returns_404(
     assert response.json()["detail"]["code"] == "not_found"
 
 
-async def test_get_run_status_returns_state(
+async def test_list_runs_returns_runs(client: AsyncClient) -> None:
+    """GET /runs returns a runs array."""
+    response = await client.get("/api/v1/runs")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["runs"][0]["run_id"] == "r1"
+
+
+async def test_get_run_status_returns_enriched_detail(
     client: AsyncClient,
     fake_run_service: FakeRunService,
 ) -> None:
-    """GET /runs/{id} returns RunState JSON."""
+    """GET /runs/{id} returns state plus steps and Mermaid diagram."""
     response = await client.get("/api/v1/runs/r1")
     assert response.status_code == 200
-    assert response.json() == fake_run_service.state.model_dump(mode="json")
+    body = response.json()
+    assert body["run_id"] == "r1"
+    assert body["steps"][0]["node_id"] == "n1"
+    assert "flowchart" in body["diagram"]
 
 
-async def test_resume_run_returns_updated_state(client: AsyncClient) -> None:
-    """POST /runs/{id}/resume returns updated state."""
+async def test_resume_run_returns_enriched_detail(client: AsyncClient) -> None:
+    """POST /runs/{id}/resume returns steps + diagram."""
     response = await client.post(
         "/api/v1/runs/r1/resume",
         json={"approved": True},
     )
     assert response.status_code == 200
-    assert response.json()["status"] == RunStatus.COMPLETED
+    body = response.json()
+    assert body["status"] == RunStatus.COMPLETED
+    assert "diagram" in body
+    assert "steps" in body
