@@ -1,5 +1,6 @@
 """CLI root and serve."""
 
+import click
 from typer.testing import CliRunner
 
 from navbe.cli.main import cli
@@ -51,8 +52,9 @@ def test_bare_navbe_tty_runs_slash_session(monkeypatch) -> None:
 def test_serve_help() -> None:
     """Serve subcommand documents host/port."""
     runner = CliRunner()
-    # Rich help splits "--host" across ANSI spans unless color is off.
-    result = runner.invoke(cli, ["serve", "--help"], color=False)
+    result = runner.invoke(cli, ["serve", "--help"])
     assert result.exit_code == 0
-    assert "--host" in result.output
-    assert "--port" in result.output
+    # Rich help splits "--host" across ANSI spans when CI forces color.
+    plain = click.unstyle(result.output)
+    assert "--host" in plain
+    assert "--port" in plain
