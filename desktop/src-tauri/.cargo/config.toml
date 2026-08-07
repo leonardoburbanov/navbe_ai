@@ -1,0 +1,4 @@
+# MSVC link.exe prints "Creando biblioteca …" (locale-dependent) to stdout;
+# rustc surfaces that as `linker_messages`. Harmless — silence the noise.
+[target.'cfg(windows)']
+rustflags = ["-A", "linker_messages"]
