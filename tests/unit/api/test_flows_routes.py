@@ -11,6 +11,7 @@ from navbe.api.v1.routes import flows as flows_routes
 from navbe.core.exceptions import NotFoundError, ValidationError
 from navbe.dependencies import get_flow_service
 from navbe.domains.flows.models import FlowMetadata, FlowSpec
+from navbe.domains.flows.validator import ValidationResult
 
 
 class FakeFlowService:
@@ -80,6 +81,9 @@ class FakeFlowService:
                 path="/tmp/demo/flow.json",
             )
         ]
+
+    def validate(self, flow_spec: FlowSpec) -> ValidationResult:
+        return ValidationResult(valid=True, issues=[])
 
 
 @pytest.fixture
@@ -218,3 +222,24 @@ async def test_put_missing_flow_returns_404(
     )
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "not_found"
+
+
+async def test_validate_flow_returns_result(client: AsyncClient) -> None:
+    """POST /flows/validate returns ValidationResult without persisting."""
+    response = await client.post(
+        "/api/v1/flows/validate",
+        json={
+            "flow_id": "demo",
+            "entry_node": "n1",
+            "nodes": [
+                {
+                    "id": "n1",
+                    "step_type": "set_var",
+                    "config": {"var_name": "x", "value_from": "x"},
+                }
+            ],
+            "edges": [],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {"valid": True, "issues": []}

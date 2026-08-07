@@ -25,6 +25,19 @@ async def create_flow(
     return metadata.model_dump(mode="json")
 
 
+@router.post("/validate")
+async def validate_flow(
+    spec: dict[str, Any],
+    service: Annotated[FlowService, Depends(get_flow_service)],
+) -> dict[str, Any]:
+    """Validate a FlowSpec without saving."""
+    try:
+        result = service.validate(spec)
+    except NavbeError as exc:
+        raise to_http_exception(exc) from exc
+    return result.model_dump()
+
+
 @router.get("/{flow_id}")
 async def get_flow(
     flow_id: str,

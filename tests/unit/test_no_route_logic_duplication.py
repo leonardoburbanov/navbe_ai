@@ -14,12 +14,16 @@ ALLOWED_CALL_NAMES = {
     "get",
     "list",
     "update",
+    "validate",
     "start",
     "status",
+    "detail",
+    "run_detail_payload",
     "resume",
     "cancel",
     "enable",
     "disable",
+    "list_runs",
     "list_schedule_runs",
 }
 

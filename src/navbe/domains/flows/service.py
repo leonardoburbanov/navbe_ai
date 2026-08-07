@@ -17,8 +17,16 @@ class FlowService:
         """Create a service with an injectable repository."""
         self._repository = repository
 
-    def validate(self, flow_spec: FlowSpec) -> ValidationResult:
-        """Run structural graph validation."""
+    def validate(self, flow_spec: FlowSpec | dict[str, Any]) -> ValidationResult:
+        """Parse (if dict) and run structural graph validation."""
+        if isinstance(flow_spec, dict):
+            try:
+                flow_spec = FlowSpec.model_validate(flow_spec)
+            except pydantic.ValidationError as exc:
+                raise ValidationError(
+                    "Invalid FlowSpec structure",
+                    details={"errors": exc.errors()},
+                ) from exc
         return validate_graph(flow_spec)
 
     async def create(self, flow_spec_dict: dict[str, Any]) -> FlowMetadata:

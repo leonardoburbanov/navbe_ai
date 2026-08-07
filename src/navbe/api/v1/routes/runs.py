@@ -2,12 +2,13 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from navbe.api.errors import to_http_exception
 from navbe.core.exceptions import NavbeError
 from navbe.dependencies import get_run_service
+from navbe.domains.execution.payloads import run_detail_payload
 from navbe.domains.execution.service import RunService
 
 router = APIRouter()
@@ -34,17 +35,27 @@ async def start_run(
     return {"run_id": run_id}
 
 
+@router.get("")
+async def list_runs(
+    service: Annotated[RunService, Depends(get_run_service)],
+    flow_id: Annotated[str | None, Query()] = None,
+) -> dict[str, Any]:
+    """List runs, optionally filtered by flow_id (most recent first)."""
+    runs = await service.list_runs(flow_id)
+    return {"runs": [run.model_dump(mode="json") for run in runs]}
+
+
 @router.get("/{run_id}")
 async def get_run_status(
     run_id: str,
     service: Annotated[RunService, Depends(get_run_service)],
 ) -> dict[str, Any]:
-    """Return the latest RunState for a run."""
+    """Return run state plus steps timeline and Mermaid diagram."""
     try:
-        state = await service.status(run_id)
+        detail = await service.detail(run_id)
     except NavbeError as exc:
         raise to_http_exception(exc) from exc
-    return state.model_dump(mode="json")
+    return run_detail_payload(detail)
 
 
 @router.post("/{run_id}/resume")
@@ -53,12 +64,13 @@ async def resume_run(
     decision: dict[str, Any],
     service: Annotated[RunService, Depends(get_run_service)],
 ) -> dict[str, Any]:
-    """Resume a paused run with a decision payload."""
+    """Resume a paused run with a decision payload; returns enriched detail."""
     try:
-        state = await service.resume(run_id, decision)
+        await service.resume(run_id, decision)
+        detail = await service.detail(run_id)
     except NavbeError as exc:
         raise to_http_exception(exc) from exc
-    return state.model_dump(mode="json")
+    return run_detail_payload(detail)
 
 
 @router.post("/{run_id}/cancel")

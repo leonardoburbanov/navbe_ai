@@ -26,6 +26,15 @@ serve.pid
 serve.log
 navbe_schedules/
 
+# Desktop / Tauri
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/resources/navbe/**
+!desktop/src-tauri/resources/navbe/.gitkeep
+desktop/src-tauri/gen/
+*.spec
+
 # OS / IDE
 .DS_Store
 Thumbs.db

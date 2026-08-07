@@ -4,7 +4,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from navbe.api.v1.routes import catalog as catalog_routes
 from navbe.api.v1.routes import flows as flows_routes
 from navbe.api.v1.routes import runs as runs_routes
 from navbe.api.v1.routes import schedules as schedules_routes
@@ -55,12 +57,28 @@ def create_app() -> FastAPI:
                 await scheduler.stop()
 
     app = FastAPI(title="Navbe", version="0.1.0", lifespan=lifespan)
+    # Desktop webview origins only (Tauri prod + Vite/Tauri dev).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "tauri://localhost",
+            "http://localhost:1420",
+            "https://tauri.localhost",
+            "http://tauri.localhost",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
         """Liveness probe for humans and load balancers."""
         return {"status": "ok"}
 
+    app.include_router(
+        catalog_routes.router, prefix="/api/v1/catalog", tags=["catalog"]
+    )
     app.include_router(flows_routes.router, prefix="/api/v1/flows", tags=["flows"])
     app.include_router(runs_routes.router, prefix="/api/v1/runs", tags=["runs"])
     app.include_router(
