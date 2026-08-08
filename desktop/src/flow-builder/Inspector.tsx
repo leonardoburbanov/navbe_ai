@@ -129,7 +129,10 @@ export default function Inspector({
               </div>
             )}
             {!selectedNode && !selectedEdge && (
-              <p className="muted text-sm">Select a node or edge on the canvas.</p>
+              <p className="muted text-sm">
+                Select a step to edit its config, or an edge to set a condition. Use the Flow tab for
+                id/name/entry.
+              </p>
             )}
           </>
         )}

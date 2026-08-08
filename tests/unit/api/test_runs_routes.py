@@ -84,14 +84,19 @@ async def client(fake_run_service: FakeRunService):
         yield ac
 
 
-async def test_start_run_returns_run_id(client: AsyncClient) -> None:
-    """POST /runs returns {"run_id": ...}."""
+async def test_start_run_returns_enriched_detail(client: AsyncClient) -> None:
+    """POST /runs returns run detail (run_id + status) for immediate UI navigation."""
     response = await client.post(
         "/api/v1/runs",
         json={"flow_id": "f1", "initial_input": {"x": 1}},
     )
     assert response.status_code == 200
-    assert response.json() == {"run_id": "r1"}
+    body = response.json()
+    assert body["run_id"] == "r1"
+    assert body["flow_id"] == "f1"
+    assert body["status"] == RunStatus.COMPLETED
+    assert "steps" in body
+    assert "diagram" in body
 
 
 async def test_start_run_unknown_flow_returns_404(

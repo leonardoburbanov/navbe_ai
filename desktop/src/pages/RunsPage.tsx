@@ -1,25 +1,58 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import mermaid from "mermaid";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { RunState } from "../api/types";
+import { statusTone } from "../lib/runsNav";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
-/** Runs history, detail with Mermaid, start/cancel/resume. */
+/** Runs history + live detail; deep-links via ?flow_id=&run_id=. */
 export default function RunsPage() {
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const flows = useQuery({ queryKey: ["flows"], queryFn: () => api.listFlows() });
-  const [flowId, setFlowId] = useState("");
+  const paramFlow = searchParams.get("flow_id") ?? "";
+  const paramRun = searchParams.get("run_id") ?? "";
+  const [flowId, setFlowId] = useState(paramFlow);
   const [selected, setSelected] = useState<RunState | null>(null);
   const [diagramSvg, setDiagramSvg] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (paramFlow !== flowId) setFlowId(paramFlow);
+  }, [paramFlow]); // eslint-disable-line react-hooks/exhaustive-deps -- sync URL → local
+
   const runs = useQuery({
     queryKey: ["runs", flowId || "all"],
     queryFn: () => api.listRuns(flowId || undefined),
-    refetchInterval: selected?.status === "running" || selected?.status === "paused" ? 2000 : false,
+    refetchInterval:
+      selected?.status === "running" ||
+      selected?.status === "paused" ||
+      selected?.status === "pending"
+        ? 1500
+        : false,
   });
+
+  useEffect(() => {
+    if (!paramRun) return;
+    let cancelled = false;
+    void api
+      .getRun(paramRun)
+      .then((run) => {
+        if (!cancelled) {
+          setSelected(run);
+          setError(null);
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [paramRun]);
 
   useEffect(() => {
     if (!selected?.diagram) {
@@ -32,9 +65,33 @@ export default function RunsPage() {
       .catch(() => setDiagramSvg(""));
   }, [selected]);
 
+  // Live-poll selected run while active.
+  useEffect(() => {
+    if (!selected) return;
+    if (!["running", "paused", "pending"].includes(selected.status)) return;
+    const id = window.setInterval(() => {
+      void api
+        .getRun(selected.run_id)
+        .then((run) => setSelected(run))
+        .catch(() => undefined);
+    }, 1500);
+    return () => window.clearInterval(id);
+  }, [selected?.run_id, selected?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const refreshDetail = useMutation({
     mutationFn: (runId: string) => api.getRun(runId),
-    onSuccess: (run) => setSelected(run),
+    onSuccess: (run) => {
+      setSelected(run);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("run_id", run.run_id);
+          next.set("flow_id", run.flow_id);
+          return next;
+        },
+        { replace: true },
+      );
+    },
     onError: (err: Error) => setError(err.message),
   });
 
@@ -46,7 +103,8 @@ export default function RunsPage() {
     onSuccess: async (res) => {
       setError(null);
       void qc.invalidateQueries({ queryKey: ["runs"] });
-      refreshDetail.mutate(res.run_id);
+      setSearchParams({ flow_id: res.flow_id, run_id: res.run_id });
+      setSelected(res);
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -70,23 +128,46 @@ export default function RunsPage() {
     onError: (err: Error) => setError(err.message),
   });
 
+  function setFlowFilter(next: string) {
+    setFlowId(next);
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        if (next) p.set("flow_id", next);
+        else p.delete("flow_id");
+        return p;
+      },
+      { replace: true },
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Runs</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">Runs</h1>
+        <p className="muted text-sm mt-1">
+          Start a flow on demand, watch status, then inspect steps when it finishes.
+        </p>
+      </div>
       <div className="card flex flex-wrap items-end gap-3">
         <label className="field mb-0 min-w-[220px]">
           <span>Flow</span>
-          <select value={flowId} onChange={(e) => setFlowId(e.target.value)}>
+          <select value={flowId} onChange={(e) => setFlowFilter(e.target.value)}>
             <option value="">All flows</option>
             {(flows.data ?? []).map((f) => (
               <option key={f.flow_id} value={f.flow_id}>
-                {f.flow_id}
+                {f.name ? `${f.name} (${f.flow_id})` : f.flow_id}
               </option>
             ))}
           </select>
         </label>
-        <button className="btn" type="button" disabled={!flowId} onClick={() => start.mutate()}>
-          Start run
+        <button
+          className="btn"
+          type="button"
+          disabled={!flowId || start.isPending}
+          onClick={() => start.mutate()}
+        >
+          {start.isPending ? "Starting…" : "Start run"}
         </button>
       </div>
       {error && <p className="error text-sm">{error}</p>}
@@ -104,13 +185,20 @@ export default function RunsPage() {
           </thead>
           <tbody>
             {(runs.data?.runs ?? []).map((run) => (
-              <tr key={run.run_id}>
+              <tr
+                key={run.run_id}
+                className={selected?.run_id === run.run_id ? "row-selected" : undefined}
+              >
                 <td>
-                  <code>{run.run_id}</code>
+                  <code className="text-xs">{run.run_id.slice(0, 8)}…</code>
                 </td>
                 <td>{run.flow_id}</td>
-                <td>{run.status}</td>
-                <td className="text-sm muted">{run.updated_at}</td>
+                <td>
+                  <span className={`status-pill status-pill--${statusTone(run.status)}`}>
+                    {run.status}
+                  </span>
+                </td>
+                <td className="text-sm muted">{formatWhen(run.updated_at)}</td>
                 <td>
                   <button
                     className="btn-ghost"
@@ -124,8 +212,13 @@ export default function RunsPage() {
             ))}
             {(runs.data?.runs ?? []).length === 0 && (
               <tr>
-                <td colSpan={5} className="muted">
-                  No runs yet.
+                <td colSpan={5}>
+                  <div className="empty-state">
+                    <p className="font-medium">No runs yet</p>
+                    <p className="muted text-sm">
+                      Pick a flow above and click Start run, or use Run on the Flows page.
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -135,19 +228,35 @@ export default function RunsPage() {
 
       {selected && (
         <div className="card space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">
-              {selected.run_id} · {selected.status}
-            </h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-lg font-medium flex items-center gap-2 flex-wrap">
+                <span>Run detail</span>
+                <span className={`status-pill status-pill--${statusTone(selected.status)}`}>
+                  {selected.status}
+                </span>
+              </h2>
+              <p className="muted text-sm">
+                <code>{selected.run_id}</code> · {selected.flow_id}
+              </p>
+            </div>
             <div className="flex gap-2">
               {(selected.status === "running" ||
                 selected.status === "paused" ||
                 selected.status === "pending") && (
-                <button className="btn-danger" type="button" onClick={() => cancel.mutate(selected.run_id)}>
+                <button
+                  className="btn-danger"
+                  type="button"
+                  onClick={() => cancel.mutate(selected.run_id)}
+                >
                   Cancel
                 </button>
               )}
-              <button className="btn-ghost" type="button" onClick={() => refreshDetail.mutate(selected.run_id)}>
+              <button
+                className="btn-ghost"
+                type="button"
+                onClick={() => refreshDetail.mutate(selected.run_id)}
+              >
                 Refresh
               </button>
             </div>
@@ -185,18 +294,42 @@ export default function RunsPage() {
                 <tr key={step.node_id}>
                   <td>{step.node_id}</td>
                   <td>{step.step_type}</td>
-                  <td>{step.status}</td>
+                  <td>
+                    <span className={`status-pill status-pill--${statusTone(step.status)}`}>
+                      {step.status}
+                    </span>
+                  </td>
                   <td>{step.latency_ms != null ? `${step.latency_ms} ms` : "—"}</td>
                 </tr>
               ))}
+              {(selected.steps ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={4} className="muted">
+                    Steps appear as the run progresses…
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-          <div
-            className="rounded-lg border border-slate-700 bg-slate-950 p-3 overflow-auto"
-            dangerouslySetInnerHTML={{ __html: diagramSvg }}
-          />
+          {diagramSvg && (
+            <div
+              className="rounded-lg border border-slate-700 bg-slate-950 p-3 overflow-auto"
+              dangerouslySetInnerHTML={{ __html: diagramSvg }}
+            />
+          )}
         </div>
       )}
     </div>
   );
+}
+
+/** Short relative-ish timestamp for the table. */
+function formatWhen(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString();
+  } catch {
+    return iso;
+  }
 }

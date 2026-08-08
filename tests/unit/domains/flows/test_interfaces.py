@@ -96,6 +96,15 @@ class FakeFlowRepository:
         self.flows.pop(flow_id, None)
         self.versions.pop(flow_id, None)
 
+    async def delete(self, flow_id: str) -> None:
+        """Remove a flow or raise if missing."""
+        if flow_id not in self.flows:
+            raise NotFoundError(
+                f"Flow '{flow_id}' not found",
+                details={"flow_id": flow_id},
+            )
+        await self.delete_index(flow_id)
+
 
 def test_fake_repository_satisfies_protocol() -> None:
     """Runtime-checkable Protocol accepts structural implementation."""

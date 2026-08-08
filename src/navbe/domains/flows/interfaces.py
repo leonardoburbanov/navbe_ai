@@ -32,3 +32,7 @@ class FlowRepository(Protocol):
     async def delete_index(self, flow_id: str) -> None:
         """Remove a flow_id from the index after its directory was deleted."""
         ...
+
+    async def delete(self, flow_id: str) -> None:
+        """Remove flow files and index row; raise if the flow does not exist."""
+        ...

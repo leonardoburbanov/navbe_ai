@@ -9,8 +9,8 @@ interface PaletteProps {
 export default function Palette({ stepTypes, onAdd }: PaletteProps) {
   return (
     <aside className="flow-palette">
-      <div className="flow-palette__heading">Steps</div>
-      <p className="muted text-xs px-2 mb-2">Click or drag onto canvas</p>
+      <div className="flow-palette__heading">Add a step</div>
+      <p className="muted text-xs px-2 mb-2">Click or drag onto the canvas</p>
       <ul className="flow-palette__list">
         {stepTypes.map((t) => (
           <li key={t}>
@@ -24,7 +24,8 @@ export default function Palette({ stepTypes, onAdd }: PaletteProps) {
               }}
               onClick={() => onAdd(t)}
             >
-              {t}
+              <span className="flow-palette__label">{humanize(t)}</span>
+              <span className="flow-palette__id">{t}</span>
             </button>
           </li>
         ))}
@@ -32,6 +33,15 @@ export default function Palette({ stepTypes, onAdd }: PaletteProps) {
       </ul>
     </aside>
   );
+}
+
+/** Turn set_var into "Set var" for humans. */
+function humanize(stepType: string): string {
+  return stepType
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 export { MIME as STEP_DRAG_MIME };

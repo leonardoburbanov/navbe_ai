@@ -1,5 +1,6 @@
 """Filesystem + SQLite persistence for flow specs."""
 
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -228,3 +229,21 @@ class FileSystemFlowRepository:
                 delete(flows_index).where(flows_index.c.flow_id == flow_id)
             )
             await session.commit()
+
+    async def delete(self, flow_id: str) -> None:
+        """Remove ``flows/<flow_id>/`` and the index row."""
+        flow_dir = self._flows_dir / flow_id
+        path = self._flow_path(flow_id)
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(flows_index.c.flow_id).where(flows_index.c.flow_id == flow_id)
+            )
+            indexed = result.one_or_none() is not None
+        if not indexed and not path.exists():
+            raise NotFoundError(
+                f"Flow '{flow_id}' not found",
+                details={"flow_id": flow_id},
+            )
+        if flow_dir.exists():
+            shutil.rmtree(flow_dir)
+        await self.delete_index(flow_id)

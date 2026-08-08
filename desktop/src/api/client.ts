@@ -130,6 +130,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(spec),
     }),
+  deleteFlow: (flowId: string) =>
+    request<{ flow_id: string; deleted: boolean }>(
+      `/api/v1/flows/${encodeURIComponent(flowId)}`,
+      { method: "DELETE" },
+    ),
 
   listRuns: (flowId?: string) => {
     const qs = flowId ? `?flow_id=${encodeURIComponent(flowId)}` : "";
@@ -137,7 +142,7 @@ export const api = {
   },
   getRun: (runId: string) => request<RunState>(`/api/v1/runs/${encodeURIComponent(runId)}`),
   startRun: (flowId: string, initialInput?: Record<string, unknown>) =>
-    request<{ run_id: string }>("/api/v1/runs", {
+    request<RunState>("/api/v1/runs", {
       method: "POST",
       body: JSON.stringify({ flow_id: flowId, initial_input: initialInput ?? null }),
     }),

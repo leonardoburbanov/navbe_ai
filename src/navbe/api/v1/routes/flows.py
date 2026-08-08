@@ -83,3 +83,16 @@ async def list_flows(
     """List saved flow metadata."""
     flows = await service.list()
     return [flow.model_dump(mode="json") for flow in flows]
+
+
+@router.delete("/{flow_id}")
+async def delete_flow(
+    flow_id: str,
+    service: Annotated[FlowService, Depends(get_flow_service)],
+) -> dict[str, Any]:
+    """Delete a persisted flow (directory + index)."""
+    try:
+        await service.delete(flow_id)
+    except NavbeError as exc:
+        raise to_http_exception(exc) from exc
+    return {"flow_id": flow_id, "deleted": True}

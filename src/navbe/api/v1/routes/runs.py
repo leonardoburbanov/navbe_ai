@@ -25,14 +25,23 @@ class StartRunRequest(BaseModel):
 async def start_run(
     body: StartRunRequest,
     service: Annotated[RunService, Depends(get_run_service)],
-) -> dict[str, str]:
-    """Start a flow run; returns immediately with run_id."""
+) -> dict[str, Any]:
+    """Start a flow run; returns immediately with run_id + pending status."""
     try:
         run_id = await service.start(body.flow_id, body.initial_input)
     except NavbeError as exc:
         raise to_http_exception(exc) from exc
     assert run_id is not None
-    return {"run_id": run_id}
+    # ponytail: detail may still be sparse while the task boots — enough for UI nav
+    try:
+        detail = await service.detail(run_id)
+        return run_detail_payload(detail)
+    except NavbeError:
+        return {
+            "run_id": run_id,
+            "flow_id": body.flow_id,
+            "status": "pending",
+        }
 
 
 @router.get("")

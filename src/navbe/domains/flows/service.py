@@ -74,3 +74,7 @@ class FlowService:
     async def list(self) -> list[FlowMetadata]:
         """List saved flow metadata."""
         return await self._repository.list()
+
+    async def delete(self, flow_id: str) -> None:
+        """Delete a persisted flow (files + index)."""
+        await self._repository.delete(flow_id)

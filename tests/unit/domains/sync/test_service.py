@@ -76,6 +76,9 @@ class FakeFlowRepo:
         self.deleted.append(flow_id)
         self.flows.pop(flow_id, None)
 
+    async def delete(self, flow_id: str) -> None:
+        await self.delete_index(flow_id)
+
 
 class FakeGitRemote:
     """In-memory git remote: tracks branch, dirty, commits, push/pull calls."""

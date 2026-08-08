@@ -85,6 +85,15 @@ class FakeFlowService:
     def validate(self, flow_spec: FlowSpec) -> ValidationResult:
         return ValidationResult(valid=True, issues=[])
 
+    async def delete(self, flow_id: str) -> None:
+        if self.get_error is not None:
+            raise self.get_error
+        if flow_id != self.spec.flow_id:
+            raise NotFoundError(
+                f"Flow '{flow_id}' not found",
+                details={"flow_id": flow_id},
+            )
+
 
 @pytest.fixture
 def fake_flow_service() -> FakeFlowService:
@@ -243,3 +252,24 @@ async def test_validate_flow_returns_result(client: AsyncClient) -> None:
     )
     assert response.status_code == 200
     assert response.json() == {"valid": True, "issues": []}
+
+
+async def test_delete_flow_returns_deleted(client: AsyncClient) -> None:
+    """DELETE /flows/{id} removes a flow."""
+    response = await client.delete("/api/v1/flows/demo")
+    assert response.status_code == 200
+    assert response.json() == {"flow_id": "demo", "deleted": True}
+
+
+async def test_delete_flow_missing_returns_404(
+    client: AsyncClient,
+    fake_flow_service: FakeFlowService,
+) -> None:
+    """DELETE missing flow maps to 404."""
+    fake_flow_service.get_error = NotFoundError(
+        "missing",
+        details={"flow_id": "ghost"},
+    )
+    response = await client.delete("/api/v1/flows/ghost")
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "not_found"
