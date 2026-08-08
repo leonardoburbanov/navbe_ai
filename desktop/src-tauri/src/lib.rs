@@ -12,6 +12,7 @@ use tauri::State;
 
 const BASE_URL: &str = "http://127.0.0.1:8000";
 const HEALTH_URL: &str = "http://127.0.0.1:8000/health";
+const CATALOG_URL: &str = "http://127.0.0.1:8000/api/v1/catalog/full";
 const MCP_URL: &str = "http://127.0.0.1:8000/mcp";
 
 struct DaemonState {
@@ -40,20 +41,33 @@ struct ApiProxyResponse {
     body: String,
 }
 
-fn health_ok() -> bool {
+fn http_get_ok(url: &str) -> bool {
     reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(1))
+        .timeout(Duration::from_secs(2))
         .build()
         .ok()
-        .and_then(|c| c.get(HEALTH_URL).send().ok())
+        .and_then(|c| c.get(url).send().ok())
         .map(|r| r.status().is_success())
         .unwrap_or(false)
 }
 
-fn wait_until_healthy(timeout: Duration) -> bool {
+fn health_ok() -> bool {
+    http_get_ok(HEALTH_URL)
+}
+
+/// True when the daemon is new enough for the desktop UI (has catalog routes).
+fn catalog_ok() -> bool {
+    http_get_ok(CATALOG_URL)
+}
+
+fn daemon_ready() -> bool {
+    health_ok() && catalog_ok()
+}
+
+fn wait_until_ready(timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
-        if health_ok() {
+        if daemon_ready() {
             return true;
         }
         thread::sleep(Duration::from_millis(250));
@@ -118,6 +132,29 @@ fn which_navbe() -> Result<PathBuf, String> {
     Err("navbe not found on PATH".into())
 }
 
+/// Stop an outdated / foreign serve on :8000 so the bundled sidecar can take over.
+fn reclaim_port(app: &tauri::AppHandle) {
+    // Graceful stop via any available navbe CLI (clears serve.pid).
+    if let Ok(bundled) = resolve_sidecar_path(app) {
+        let _ = Command::new(&bundled).arg("stop").output();
+    }
+    if let Ok(path) = which_navbe() {
+        let _ = Command::new(&path).arg("stop").output();
+    }
+
+    #[cfg(windows)]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/F", "/IM", "navbe.exe", "/T"])
+            .output();
+    }
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < deadline && health_ok() {
+        thread::sleep(Duration::from_millis(200));
+    }
+}
+
 fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), String> {
     let exe = resolve_sidecar_path(app)?;
     let log_path = default_log_path();
@@ -160,14 +197,14 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
     *state.attached.lock().unwrap() = false;
     *state.log_path.lock().unwrap() = Some(log_path.display().to_string());
 
-    // Cold PyInstaller start can exceed 30s on first launch.
-    if !wait_until_healthy(Duration::from_secs(60)) {
+    // Cold PyInstaller start can be slow; also wait for catalog (not just /health).
+    if !wait_until_ready(Duration::from_secs(60)) {
         if let Some(mut child) = state.child.lock().unwrap().take() {
             let _ = child.kill();
             let _ = child.wait();
         }
         return Err(format!(
-            "navbe serve did not become healthy at {HEALTH_URL}; see {}",
+            "navbe serve did not become ready at {HEALTH_URL} (catalog missing); see {}",
             log_path.display()
         ));
     }
@@ -175,13 +212,20 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
 }
 
 fn ensure_daemon(app: &tauri::AppHandle, state: &DaemonState) {
-    if health_ok() {
+    // Compatible daemon already up (relaunch is fast).
+    if daemon_ready() {
         *state.attached.lock().unwrap() = true;
         *state.error.lock().unwrap() = None;
         *state.log_path.lock().unwrap() = Some(default_log_path().display().to_string());
         *state.booting.lock().unwrap() = false;
         return;
     }
+
+    // Old CLI / incomplete serve on :8000 → reclaim, then start bundled sidecar.
+    if health_ok() && !catalog_ok() {
+        reclaim_port(app);
+    }
+
     match spawn_sidecar(app, state) {
         Ok(()) => {
             *state.error.lock().unwrap() = None;
@@ -197,7 +241,7 @@ fn ensure_daemon(app: &tauri::AppHandle, state: &DaemonState) {
 fn daemon_status(state: State<'_, DaemonState>) -> DaemonStatus {
     let attached = *state.attached.lock().unwrap();
     let booting = *state.booting.lock().unwrap();
-    let running = health_ok();
+    let running = daemon_ready();
     DaemonStatus {
         running,
         attached,
@@ -267,18 +311,11 @@ pub fn run() {
             }
             Ok(())
         })
-        .on_window_event(|window, event| {
+        .on_window_event(|_window, event| {
+            // Keep the daemon running after the window closes (faster relaunch).
+            // Uninstall hooks stop navbe.exe via resources/stop-all.cmd.
             if let tauri::WindowEvent::Destroyed = event {
-                let state = window.state::<DaemonState>();
-                let attached = *state.attached.lock().unwrap();
-                if attached {
-                    return;
-                }
-                let mut child_slot = state.child.lock().unwrap();
-                if let Some(mut child) = child_slot.take() {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                }
+                // Intentionally do not kill the sidecar.
             }
         })
         .invoke_handler(tauri::generate_handler![daemon_status, api_request])

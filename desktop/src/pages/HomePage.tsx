@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { api } from "../api/client";
 import type { DaemonStatus } from "../api/types";
 
-/** Home: daemon status, base URL, MCP URL copy helper. */
+/** Home: daemon status + short “what next” checklist. */
 export default function HomePage() {
   const daemon = useQuery({
     queryKey: ["daemon-status"],
@@ -22,12 +22,24 @@ export default function HomePage() {
         } satisfies DaemonStatus;
       }
     },
-    refetchInterval: 3000,
+    refetchInterval: (q) => (q.state.data?.booting ? 1000 : 3000),
   });
   const health = useQuery({
     queryKey: ["health"],
     queryFn: () => api.health(),
     refetchInterval: 3000,
+    retry: false,
+  });
+  const flows = useQuery({
+    queryKey: ["flows"],
+    queryFn: () => api.listFlows(),
+    enabled: Boolean(daemon.data?.running) || health.isSuccess,
+    retry: false,
+  });
+  const secrets = useQuery({
+    queryKey: ["secrets"],
+    queryFn: () => api.listSecrets(),
+    enabled: Boolean(daemon.data?.running) || health.isSuccess,
     retry: false,
   });
 
@@ -36,10 +48,13 @@ export default function HomePage() {
     Boolean(status?.running) || (health.isSuccess && health.data?.status === "ok");
   const booting = Boolean(status?.booting) && !healthy;
   const label = healthy
-    ? "Daemon healthy"
+    ? "Ready"
     : booting
-      ? "Starting daemon…"
+      ? "Starting local daemon…"
       : "Waiting for daemon…";
+
+  const flowCount = flows.data?.length ?? 0;
+  const secretCount = secrets.data?.keys?.length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -54,11 +69,7 @@ export default function HomePage() {
         {status?.error && <p className="error text-sm">{status.error}</p>}
         <dl className="grid grid-cols-[140px_1fr] gap-y-2 text-sm">
           <dt className="muted">Mode</dt>
-          <dd>{status?.attached ? "Attached (external serve)" : "Sidecar managed"}</dd>
-          <dt className="muted">Base URL</dt>
-          <dd>
-            <code>{status?.base_url ?? "http://127.0.0.1:8000"}</code>
-          </dd>
+          <dd>{status?.attached ? "Attached (existing serve)" : "Sidecar managed"}</dd>
           <dt className="muted">MCP URL</dt>
           <dd className="flex items-center gap-2">
             <code>{status?.mcp_url ?? "http://127.0.0.1:8000/mcp"}</code>
@@ -72,16 +83,35 @@ export default function HomePage() {
               Copy
             </button>
           </dd>
-          <dt className="muted">Log path</dt>
-          <dd>
-            <code className="break-all">{status?.log_path ?? "(none)"}</code>
-          </dd>
         </dl>
-        <p className="muted text-sm">
-          Paste the MCP URL into Cursor / Claude Desktop. Agents and this UI share the same
-          local daemon.
-        </p>
       </div>
+
+      {healthy && (
+        <div className="card space-y-2 text-sm">
+          <strong>Getting started</strong>
+          <ol className="list-decimal space-y-1 pl-5 muted">
+            <li>
+              Flows seeded:{" "}
+              <span className="text-slate-200">
+                {flows.isLoading ? "…" : `${flowCount} (open Flows — try starter)`}
+              </span>
+            </li>
+            <li>
+              Connectors & steps: always listed under{" "}
+              <span className="text-slate-200">Connectors</span> (built-in catalog).
+            </li>
+            <li>
+              Secrets stored:{" "}
+              <span className="text-slate-200">
+                {secrets.isLoading ? "…" : secretCount}
+              </span>
+              {" — "}
+              set <code>LANGFUSE_*</code> before running <code>langfuse_traces</code>.
+            </li>
+            <li>Paste the MCP URL into Cursor / Claude Desktop (same local daemon).</li>
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

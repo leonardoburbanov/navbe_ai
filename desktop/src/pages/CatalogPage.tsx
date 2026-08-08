@@ -1,9 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 
-/** Connector / step catalog browser with "used by" from flows. */
+/** Built-in connector / step catalog (always available when the daemon is ready). */
 export default function CatalogPage() {
-  const catalog = useQuery({ queryKey: ["catalog-full"], queryFn: () => api.catalogFull() });
+  const catalog = useQuery({
+    queryKey: ["catalog-full"],
+    queryFn: () => api.catalogFull(),
+    retry: 2,
+    refetchInterval: (q) => (q.state.error ? 4000 : false),
+  });
   const flows = useQuery({ queryKey: ["flows"], queryFn: () => api.listFlows() });
   const flowSpecs = useQuery({
     queryKey: ["flow-specs", flows.data?.map((f) => f.flow_id)],
@@ -23,16 +28,42 @@ export default function CatalogPage() {
     }
   }
 
+  const errMsg = catalog.isError ? (catalog.error as Error).message : null;
+  const looksLikeMissingRoute =
+    Boolean(errMsg) && (/404/i.test(errMsg!) || /not found/i.test(errMsg!));
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Connectors & Steps</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">Connectors & Steps</h1>
+        <p className="muted text-sm mt-1">
+          Built-in types you can use in any flow. “Used by” shows which seeded/saved flows
+          already reference each connector.
+        </p>
+      </div>
       {catalog.isLoading && <p className="muted">Loading catalog…</p>}
-      {catalog.isError && <p className="error">{(catalog.error as Error).message}</p>}
+      {catalog.isError && (
+        <div className="card space-y-2">
+          <p className="error text-sm">{errMsg}</p>
+          {looksLikeMissingRoute && (
+            <p className="muted text-sm">
+              The process on port 8000 looks like an old Navbe CLI without the catalog API.
+              Close other <code>navbe serve</code> processes and reopen this app — Desktop will
+              start the bundled daemon (with connectors) automatically.
+            </p>
+          )}
+        </div>
+      )}
 
       {catalog.data && (
         <>
           <section className="space-y-3">
-            <h2 className="text-lg font-medium">Connectors</h2>
+            <h2 className="text-lg font-medium">
+              Connectors{" "}
+              <span className="muted text-sm font-normal">
+                ({Object.keys(catalog.data.connectors).length})
+              </span>
+            </h2>
             <div className="grid gap-3 md:grid-cols-2">
               {Object.values(catalog.data.connectors).map((c) => (
                 <div key={c.connector_type} className="card space-y-2">
@@ -56,7 +87,12 @@ export default function CatalogPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-medium">Steps</h2>
+            <h2 className="text-lg font-medium">
+              Steps{" "}
+              <span className="muted text-sm font-normal">
+                ({Object.keys(catalog.data.steps).length})
+              </span>
+            </h2>
             <div className="grid gap-3 md:grid-cols-2">
               {Object.values(catalog.data.steps).map((s) => (
                 <div key={s.step_type} className="card space-y-2">
