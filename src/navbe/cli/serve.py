@@ -52,7 +52,14 @@ def serve_cmd(
 
     import uvicorn
 
-    uvicorn.run("navbe.main:app", host=host, port=port, reload=reload)
+    # String import + reload is fine for editable/dev. Frozen PyInstaller
+    # must pass the ASGI app object (uvicorn cannot re-import navbe.main:app).
+    if reload:
+        uvicorn.run("navbe.main:app", host=host, port=port, reload=True)
+    else:
+        from navbe.main import app as asgi_app
+
+        uvicorn.run(asgi_app, host=host, port=port)
 
 
 @handle_navbe_errors

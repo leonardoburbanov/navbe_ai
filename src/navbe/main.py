@@ -79,6 +79,17 @@ def create_app() -> FastAPI:
         """Liveness probe for humans and load balancers."""
         return {"status": "ok"}
 
+    @app.get("/api/v1/version")
+    async def version() -> dict[str, object]:
+        """Desktop/engine readiness: version + feature flags."""
+        from navbe import __version__
+
+        return {
+            "name": "navbe",
+            "version": __version__,
+            "features": ["catalog", "defaults"],
+        }
+
     app.include_router(
         catalog_routes.router, prefix="/api/v1/catalog", tags=["catalog"]
     )

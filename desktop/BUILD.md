@@ -30,14 +30,22 @@ rustc --version
 
 ## Generate installers again
 
-Run from the **repo root**. Order matters: sidecar first, then Tauri.
+Preferred one-shot (builds/validates the Python sidecar, then Tauri):
 
 ```powershell
-# 1) Python deps + PyInstaller onedir → desktop/src-tauri/resources/navbe/
+cd desktop
+pnpm install
+pnpm run tauri:build
+```
+
+`pnpm tauri build` alone **fails** if `resources/navbe/navbe.exe` (+ `.sidecar-stamp`)
+is missing — run `pnpm run sidecar` first, or use `tauri:build`.
+
+Manual sequence from the **repo root**:
+
+```powershell
 uv sync --all-groups
 powershell -File scripts/build_sidecar.ps1
-
-# 2) Desktop UI + Rust + NSIS/MSI
 cd desktop
 pnpm install
 pnpm tauri build
@@ -45,8 +53,9 @@ pnpm tauri build
 
 ### What each step does
 
-1. **`scripts/build_sidecar.ps1`** — packs the `navbe` CLI with PyInstaller (`onedir`) into `desktop/src-tauri/resources/navbe/` (`navbe.exe` + `_internal/`). Tauri bundles that folder as app resources.
-2. **`pnpm tauri build`** — builds the React UI, compiles the Rust shell, and produces Windows installers.
+1. **`scripts/build_sidecar.ps1`** — packs the `navbe` CLI with PyInstaller (`onedir`) into `desktop/src-tauri/resources/navbe/` (`navbe.exe` + `_internal/` + `.sidecar-stamp`). Tauri bundles that folder as app resources. Uses an ASGI app object (not `uvicorn navbe.main:app` string) so catalog/version routes work when frozen.
+2. **`scripts/ensure_sidecar.ps1`** — gate used by `beforeBuildCommand`; exits non-zero unless the stamp + exe exist.
+3. **`pnpm tauri build`** — builds the React UI, compiles the Rust shell, and produces Windows installers. Packaged app **owns** port `8000` (reclaims stale CLI serves that lack `/api/v1/version`).
 
 ### Artifacts
 

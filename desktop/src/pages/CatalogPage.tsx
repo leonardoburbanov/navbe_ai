@@ -47,9 +47,10 @@ export default function CatalogPage() {
           <p className="error text-sm">{errMsg}</p>
           {looksLikeMissingRoute && (
             <p className="muted text-sm">
-              The process on port 8000 looks like an old Navbe CLI without the catalog API.
-              Close other <code>navbe serve</code> processes and reopen this app — Desktop will
-              start the bundled daemon (with connectors) automatically.
+              The process on port 8000 looks like an old Navbe CLI (no catalog /
+              version API). Desktop will reclaim the port and start the bundled
+              engine on next launch — or run uninstall / stop-all.cmd, then reopen
+              the app.
             </p>
           )}
         </div>

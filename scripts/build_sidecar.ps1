@@ -72,5 +72,20 @@ if (-not (Test-Path (Join-Path $OutDir "navbe.exe"))) {
   Rename-Item $found.FullName "navbe.exe"
 }
 
-Write-Host "Sidecar ready at $OutDir"
+$stampPath = Join-Path $OutDir ".sidecar-stamp"
+$git = ""
+try { $git = (git -C $Root rev-parse --short HEAD 2>$null).Trim() } catch { }
+@(
+  "built_at=$(Get-Date -Format o)"
+  "git=$git"
+  "features=catalog,defaults"
+) | Set-Content -Path $stampPath -Encoding utf8
+
+# Keep the empty-dir placeholder for git when resources are ignored.
+$gitkeep = Join-Path $OutDir ".gitkeep"
+if (-not (Test-Path $gitkeep)) {
+  New-Item -ItemType File -Path $gitkeep -Force | Out-Null
+}
+
+Write-Host "Sidecar ready at $OutDir (stamp written)"
 Get-ChildItem $OutDir | Select-Object Name, Length | Format-Table

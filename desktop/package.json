@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "ensure-sidecar": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/ensure_sidecar.ps1",
+    "sidecar": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/build_sidecar.ps1",
+    "tauri:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/ensure_sidecar.ps1 -Build && tauri build",
     "preview": "vite preview",
     "tauri": "tauri"
   },

@@ -12,8 +12,9 @@ use tauri::State;
 
 const BASE_URL: &str = "http://127.0.0.1:8000";
 const HEALTH_URL: &str = "http://127.0.0.1:8000/health";
-const CATALOG_URL: &str = "http://127.0.0.1:8000/api/v1/catalog/full";
+const VERSION_URL: &str = "http://127.0.0.1:8000/api/v1/version";
 const MCP_URL: &str = "http://127.0.0.1:8000/mcp";
+const LISTEN_PORT: u16 = 8000;
 
 struct DaemonState {
     child: Mutex<Option<Child>>,
@@ -41,6 +42,11 @@ struct ApiProxyResponse {
     body: String,
 }
 
+#[derive(serde::Deserialize)]
+struct VersionPayload {
+    features: Option<Vec<String>>,
+}
+
 fn http_get_ok(url: &str) -> bool {
     reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(2))
@@ -55,13 +61,32 @@ fn health_ok() -> bool {
     http_get_ok(HEALTH_URL)
 }
 
-/// True when the daemon is new enough for the desktop UI (has catalog routes).
-fn catalog_ok() -> bool {
-    http_get_ok(CATALOG_URL)
+/// True when the daemon exposes the features this desktop build needs.
+fn version_ok() -> bool {
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let Ok(resp) = client.get(VERSION_URL).send() else {
+        return false;
+    };
+    if !resp.status().is_success() {
+        return false;
+    }
+    let Ok(body) = resp.json::<VersionPayload>() else {
+        return false;
+    };
+    body.features
+        .unwrap_or_default()
+        .iter()
+        .any(|f| f == "catalog")
 }
 
 fn daemon_ready() -> bool {
-    health_ok() && catalog_ok()
+    health_ok() && version_ok()
 }
 
 fn wait_until_ready(timeout: Duration) -> bool {
@@ -75,6 +100,17 @@ fn wait_until_ready(timeout: Duration) -> bool {
     false
 }
 
+fn wait_until_unhealthy(timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    while Instant::now() < deadline {
+        if !health_ok() {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(200));
+    }
+    false
+}
+
 fn default_log_path() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -82,20 +118,30 @@ fn default_log_path() -> PathBuf {
         .join("serve.log")
 }
 
+fn bundled_sidecar_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    let resource_dir = app.path().resource_dir().ok()?;
+    let bundled = resource_dir.join("navbe").join(if cfg!(windows) {
+        "navbe.exe"
+    } else {
+        "navbe"
+    });
+    if bundled.exists() {
+        Some(bundled)
+    } else {
+        None
+    }
+}
+
+/// Packaged app when the installer-bundled sidecar is present.
+fn is_packaged(app: &tauri::AppHandle) -> bool {
+    bundled_sidecar_path(app).is_some()
+}
+
 fn resolve_sidecar_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    // Prefer bundled resources (packaged app).
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        let bundled = resource_dir.join("navbe").join(if cfg!(windows) {
-            "navbe.exe"
-        } else {
-            "navbe"
-        });
-        if bundled.exists() {
-            return Ok(bundled);
-        }
+    if let Some(bundled) = bundled_sidecar_path(app) {
+        return Ok(bundled);
     }
 
-    // Dev fallback: use `navbe` from PATH in a checkout.
     if let Ok(path) = which_navbe() {
         return Ok(path);
     }
@@ -132,9 +178,69 @@ fn which_navbe() -> Result<PathBuf, String> {
     Err("navbe not found on PATH".into())
 }
 
-/// Stop an outdated / foreign serve on :8000 so the bundled sidecar can take over.
+/// PIDs listening on TCP LISTEN for ``127.0.0.1:port`` / ``0.0.0.0:port`` (Windows).
+#[cfg(windows)]
+fn pids_listening_on_port(port: u16) -> Vec<u32> {
+    let output = Command::new("netstat")
+        .args(["-ano", "-p", "tcp"])
+        .output();
+    let Ok(output) = output else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut pids = Vec::new();
+    let suffixes = [
+        format!("127.0.0.1:{port}"),
+        format!("0.0.0.0:{port}"),
+        format!("[::1]:{port}"),
+        format!("[::]:{port}"),
+    ];
+    for line in text.lines() {
+        let line = line.trim();
+        if !line.contains("LISTENING") {
+            continue;
+        }
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        // Proto  Local  Foreign  State  PID
+        if parts.len() < 5 {
+            continue;
+        }
+        let local = parts[1];
+        if !suffixes.iter().any(|s| local.eq_ignore_ascii_case(s)) {
+            continue;
+        }
+        if let Ok(pid) = parts[parts.len() - 1].parse::<u32>() {
+            if pid > 0 && !pids.contains(&pid) {
+                pids.push(pid);
+            }
+        }
+    }
+    pids
+}
+
+#[cfg(not(windows))]
+fn pids_listening_on_port(_port: u16) -> Vec<u32> {
+    Vec::new()
+}
+
+fn kill_pid(pid: u32) {
+    #[cfg(windows)]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/F", "/PID", &pid.to_string(), "/T"])
+            .output();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = Command::new("kill").args(["-9", &pid.to_string()]).output();
+    }
+}
+
+/// Stop anything on :8000 so the bundled/dev sidecar can bind.
 fn reclaim_port(app: &tauri::AppHandle) {
-    // Graceful stop via any available navbe CLI (clears serve.pid).
     if let Ok(bundled) = resolve_sidecar_path(app) {
         let _ = Command::new(&bundled).arg("stop").output();
     }
@@ -142,20 +248,32 @@ fn reclaim_port(app: &tauri::AppHandle) {
         let _ = Command::new(&path).arg("stop").output();
     }
 
+    for pid in pids_listening_on_port(LISTEN_PORT) {
+        kill_pid(pid);
+    }
+
     #[cfg(windows)]
     {
+        // Last resort: any leftover navbe serve binary.
         let _ = Command::new("taskkill")
             .args(["/F", "/IM", "navbe.exe", "/T"])
             .output();
     }
 
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while Instant::now() < deadline && health_ok() {
-        thread::sleep(Duration::from_millis(200));
-    }
+    let _ = wait_until_unhealthy(Duration::from_secs(10));
 }
 
 fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), String> {
+    if health_ok() {
+        reclaim_port(app);
+        if health_ok() {
+            return Err(format!(
+                "port {LISTEN_PORT} is still busy after reclaim; stop the other \
+                 process (see netstat) or run uninstall stop-all"
+            ));
+        }
+    }
+
     let exe = resolve_sidecar_path(app)?;
     let log_path = default_log_path();
     if let Some(parent) = log_path.parent() {
@@ -176,7 +294,6 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
         .stdout(Stdio::from(log_file))
         .stderr(Stdio::from(log_err));
 
-    // PyInstaller onedir resolves _internal next to the exe; keep cwd there.
     if let Some(dir) = exe.parent() {
         cmd.current_dir(dir);
     }
@@ -197,14 +314,14 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
     *state.attached.lock().unwrap() = false;
     *state.log_path.lock().unwrap() = Some(log_path.display().to_string());
 
-    // Cold PyInstaller start can be slow; also wait for catalog (not just /health).
     if !wait_until_ready(Duration::from_secs(60)) {
         if let Some(mut child) = state.child.lock().unwrap().take() {
             let _ = child.kill();
             let _ = child.wait();
         }
         return Err(format!(
-            "navbe serve did not become ready at {HEALTH_URL} (catalog missing); see {}",
+            "navbe serve did not become ready (need /health + /api/v1/version \
+             features=[catalog]); see {}",
             log_path.display()
         ));
     }
@@ -212,8 +329,10 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
 }
 
 fn ensure_daemon(app: &tauri::AppHandle, state: &DaemonState) {
-    // Compatible daemon already up (relaunch is fast).
-    if daemon_ready() {
+    let packaged = is_packaged(app);
+
+    // Packaged desktop always owns the engine — never attach to a random CLI.
+    if !packaged && daemon_ready() {
         *state.attached.lock().unwrap() = true;
         *state.error.lock().unwrap() = None;
         *state.log_path.lock().unwrap() = Some(default_log_path().display().to_string());
@@ -221,8 +340,17 @@ fn ensure_daemon(app: &tauri::AppHandle, state: &DaemonState) {
         return;
     }
 
-    // Old CLI / incomplete serve on :8000 → reclaim, then start bundled sidecar.
-    if health_ok() && !catalog_ok() {
+    if packaged && daemon_ready() {
+        // Fast relaunch: engine we left running after last close is fine.
+        *state.attached.lock().unwrap() = true;
+        *state.error.lock().unwrap() = None;
+        *state.log_path.lock().unwrap() = Some(default_log_path().display().to_string());
+        *state.booting.lock().unwrap() = false;
+        return;
+    }
+
+    // Stale/foreign or nothing listening → reclaim (if needed) and spawn ours.
+    if health_ok() {
         reclaim_port(app);
     }
 
@@ -299,8 +427,6 @@ pub fn run() {
             booting: Mutex::new(true),
         })
         .setup(|app| {
-            // Keep setup non-blocking: reqwest::blocking on the UI thread can
-            // stall/fail window creation on Windows.
             let handle = app.handle().clone();
             thread::spawn(move || {
                 let state = handle.state::<DaemonState>();
@@ -314,9 +440,7 @@ pub fn run() {
         .on_window_event(|_window, event| {
             // Keep the daemon running after the window closes (faster relaunch).
             // Uninstall hooks stop navbe.exe via resources/stop-all.cmd.
-            if let tauri::WindowEvent::Destroyed = event {
-                // Intentionally do not kill the sidecar.
-            }
+            if let tauri::WindowEvent::Destroyed = event {}
         })
         .invoke_handler(tauri::generate_handler![daemon_status, api_request])
         .run(tauri::generate_context!())

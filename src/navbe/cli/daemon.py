@@ -169,16 +169,19 @@ def start_detached(*, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> Ser
     log_path = serve_log_path()
     pid_path = serve_pid_path()
 
-    cmd = [
-        sys.executable,
-        "-m",
-        "uvicorn",
-        "navbe.main:app",
-        "--host",
-        host,
-        "--port",
-        str(port),
-    ]
+    # Spawn a foreground `serve` (no --detach) so the same PyInstaller-safe
+    # path as serve_cmd is used. Never `python -m uvicorn navbe.main:app`.
+    if getattr(sys, "frozen", False):
+        cmd = [sys.executable, "serve", "--host", host, "--port", str(port)]
+    else:
+        cmd = [
+            sys.executable,
+            "-c",
+            (
+                "from navbe.main import app; import uvicorn; "
+                f"uvicorn.run(app, host={host!r}, port={port})"
+            ),
+        ]
     log_file = log_path.open("a", encoding="utf-8")
     popen_kwargs: dict[str, Any] = {
         "args": cmd,
