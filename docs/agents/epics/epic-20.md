@@ -2,7 +2,7 @@
 
 **Status:** in progress  
 **Goal:** One downloadable Windows installer. User double-clicks, the app starts the Navbe daemon itself, and everything agents can do over MCP is doable by a human in a GUI.  
-**Non-goal:** macOS/Linux installers (build config stays cross-platform; only Windows is released this epic), drag-and-drop graph canvas, auto-update, code signing.
+**Non-goal:** macOS/Linux installers (build config stays cross-platform; only Windows is released this epic), auto-update, code signing.
 
 ## Depends on
 
@@ -21,7 +21,7 @@
 | Shell | Tauri 2 + React 18 + TypeScript + Vite (`pnpm`) |
 | Daemon | Attach to `http://127.0.0.1:8000` if healthy; else spawn bundled sidecar; kill only if we spawned it |
 | Sidecar | PyInstaller **onedir** of `navbe` CLI → `navbe.exe serve --host 127.0.0.1 --port 8000` |
-| Authoring UI | Node/edge list editor + RJSF forms from catalog + Mermaid preview (no canvas) |
+| Authoring UI | React Flow (`@xyflow/react`) canvas + RJSF inspector from catalog; layout in `localStorage` |
 | Data home | Packaged app uses `~/.navbe` (same as CLI) |
 
 ## In scope
@@ -35,9 +35,9 @@
 ## Out of scope
 
 - macOS / Linux release artifacts
-- Flow graph canvas / drag-and-drop
 - Auto-update / code signing
 - Talking to the daemon over MCP from the UI (REST only)
+- Persisting canvas layout in FlowSpec / server (UI-only `localStorage` for now)
 
 ## Layout
 
