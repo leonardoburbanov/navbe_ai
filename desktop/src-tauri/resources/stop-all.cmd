@@ -1,15 +1,13 @@
 @echo off
-REM Stop Navbe desktop + bundled/CLI daemon before install/uninstall.
-REM Safe to run when nothing is running (errors ignored).
-
+REM Force-stop Navbe desktop + any serve on :8000 (navbe.exe OR python listener).
 setlocal
 
-REM Prefer graceful stop via bundled CLI (clears serve.pid).
 if exist "%~dp0navbe\navbe.exe" (
   "%~dp0navbe\navbe.exe" stop >nul 2>&1
 )
 
-REM Force-stop desktop shell and any navbe serve/sidecar still holding files.
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8000 -State Listen -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -EA SilentlyContinue }" >nul 2>&1
+
 taskkill /F /IM "navbe-desktop.exe" /T >nul 2>&1
 taskkill /F /IM "navbe.exe" /T >nul 2>&1
 

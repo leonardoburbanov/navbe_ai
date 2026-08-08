@@ -1,8 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
 import { api } from "../api/client";
+import type { DaemonStatus } from "../api/types";
 
 /** Built-in connector / step catalog (always available when the daemon is ready). */
 export default function CatalogPage() {
+  const queryClient = useQueryClient();
+  const [restarting, setRestarting] = useState(false);
   const catalog = useQuery({
     queryKey: ["catalog-full"],
     queryFn: () => api.catalogFull(),
@@ -32,6 +37,16 @@ export default function CatalogPage() {
   const looksLikeMissingRoute =
     Boolean(errMsg) && (/404/i.test(errMsg!) || /not found/i.test(errMsg!));
 
+  async function restartEngine() {
+    setRestarting(true);
+    try {
+      await invoke<DaemonStatus>("daemon_restart");
+      await queryClient.invalidateQueries();
+    } finally {
+      setRestarting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -47,12 +62,19 @@ export default function CatalogPage() {
           <p className="error text-sm">{errMsg}</p>
           {looksLikeMissingRoute && (
             <p className="muted text-sm">
-              The process on port 8000 looks like an old Navbe CLI (no catalog /
-              version API). Desktop will reclaim the port and start the bundled
-              engine on next launch — or run uninstall / stop-all.cmd, then reopen
-              the app.
+              Port 8000 is answering with an old Navbe (often a leftover{" "}
+              <code>python.exe</code> from <code>uv tool install navbe</code>), not the
+              bundled desktop engine.
             </p>
           )}
+          <button
+            className="btn-ghost"
+            type="button"
+            disabled={restarting}
+            onClick={() => void restartEngine()}
+          >
+            {restarting ? "Restarting engine…" : "Restart engine"}
+          </button>
         </div>
       )}
 

@@ -1,10 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
 import { api } from "../api/client";
 import type { DaemonStatus } from "../api/types";
 
 /** Home: daemon status + short “what next” checklist. */
 export default function HomePage() {
+  const queryClient = useQueryClient();
+  const [restarting, setRestarting] = useState(false);
+
   const daemon = useQuery({
     queryKey: ["daemon-status"],
     queryFn: async () => {
@@ -22,32 +26,26 @@ export default function HomePage() {
         } satisfies DaemonStatus;
       }
     },
-    refetchInterval: (q) => (q.state.data?.booting ? 1000 : 3000),
+    refetchInterval: (q) => (q.state.data?.booting || restarting ? 1000 : 3000),
   });
-  const health = useQuery({
-    queryKey: ["health"],
-    queryFn: () => api.health(),
-    refetchInterval: 3000,
-    retry: false,
-  });
+
+  const ready = Boolean(daemon.data?.running);
   const flows = useQuery({
     queryKey: ["flows"],
     queryFn: () => api.listFlows(),
-    enabled: Boolean(daemon.data?.running) || health.isSuccess,
+    enabled: ready,
     retry: false,
   });
   const secrets = useQuery({
     queryKey: ["secrets"],
     queryFn: () => api.listSecrets(),
-    enabled: Boolean(daemon.data?.running) || health.isSuccess,
+    enabled: ready,
     retry: false,
   });
 
   const status = daemon.data;
-  const healthy =
-    Boolean(status?.running) || (health.isSuccess && health.data?.status === "ok");
-  const booting = Boolean(status?.booting) && !healthy;
-  const label = healthy
+  const booting = (Boolean(status?.booting) || restarting) && !ready;
+  const label = ready
     ? "Ready"
     : booting
       ? "Starting local daemon…"
@@ -56,20 +54,42 @@ export default function HomePage() {
   const flowCount = flows.data?.length ?? 0;
   const secretCount = secrets.data?.keys?.length ?? 0;
 
+  async function restartEngine() {
+    setRestarting(true);
+    try {
+      await invoke<DaemonStatus>("daemon_restart");
+      await queryClient.invalidateQueries();
+    } finally {
+      setRestarting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Home</h1>
       <div className="card space-y-3">
         <div className="flex items-center gap-3">
           <span
-            className={`inline-block h-3 w-3 rounded-full ${healthy ? "bg-emerald-400" : "bg-amber-400"}`}
+            className={`inline-block h-3 w-3 rounded-full ${ready ? "bg-emerald-400" : "bg-amber-400"}`}
           />
           <strong>{label}</strong>
+          <button
+            className="btn-ghost ml-auto"
+            type="button"
+            disabled={restarting}
+            onClick={() => void restartEngine()}
+          >
+            {restarting ? "Restarting…" : "Restart engine"}
+          </button>
         </div>
         {status?.error && <p className="error text-sm">{status.error}</p>}
         <dl className="grid grid-cols-[140px_1fr] gap-y-2 text-sm">
-          <dt className="muted">Mode</dt>
-          <dd>{status?.attached ? "Attached (existing serve)" : "Sidecar managed"}</dd>
+          <dt className="muted">Engine</dt>
+          <dd>
+            {status?.attached
+              ? "Dev server (uv / PATH) — packaging uses Local engine only"
+              : "Local engine"}
+          </dd>
           <dt className="muted">MCP URL</dt>
           <dd className="flex items-center gap-2">
             <code>{status?.mcp_url ?? "http://127.0.0.1:8000/mcp"}</code>
@@ -86,7 +106,7 @@ export default function HomePage() {
         </dl>
       </div>
 
-      {healthy && (
+      {ready && (
         <div className="card space-y-2 text-sm">
           <strong>Getting started</strong>
           <ol className="list-decimal space-y-1 pl-5 muted">

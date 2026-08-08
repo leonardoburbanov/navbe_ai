@@ -91,11 +91,21 @@ fn daemon_ready() -> bool {
 
 fn wait_until_ready(timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
+    let mut foreign_health_since: Option<Instant> = None;
     while Instant::now() < deadline {
         if daemon_ready() {
             return true;
         }
-        thread::sleep(Duration::from_millis(250));
+        // Old uv-tool serve answers /health but not /version — don't wait 60s.
+        if health_ok() && !version_ok() {
+            let since = foreign_health_since.get_or_insert_with(Instant::now);
+            if since.elapsed() > Duration::from_secs(3) {
+                return false;
+            }
+        } else {
+            foreign_health_since = None;
+        }
+        thread::sleep(Duration::from_millis(200));
     }
     false
 }
@@ -179,42 +189,62 @@ fn which_navbe() -> Result<PathBuf, String> {
 }
 
 /// PIDs listening on TCP LISTEN for ``127.0.0.1:port`` / ``0.0.0.0:port`` (Windows).
+///
+/// Important: ``uv tool install navbe`` leaves a **python.exe** (not navbe.exe)
+/// as the LISTENING owner — never reclaim by image name alone.
 #[cfg(windows)]
 fn pids_listening_on_port(port: u16) -> Vec<u32> {
-    let output = Command::new("netstat")
-        .args(["-ano", "-p", "tcp"])
-        .output();
-    let Ok(output) = output else {
-        return Vec::new();
-    };
-    if !output.status.success() {
-        return Vec::new();
-    }
-    let text = String::from_utf8_lossy(&output.stdout);
     let mut pids = Vec::new();
-    let suffixes = [
-        format!("127.0.0.1:{port}"),
-        format!("0.0.0.0:{port}"),
-        format!("[::1]:{port}"),
-        format!("[::]:{port}"),
-    ];
-    for line in text.lines() {
-        let line = line.trim();
-        if !line.contains("LISTENING") {
-            continue;
+
+    // Prefer Get-NetTCPConnection — reliable OwningProcess for python.exe listeners.
+    if let Ok(output) = Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            &format!(
+                "Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue | \
+                 Select-Object -ExpandProperty OwningProcess"
+            ),
+        ])
+        .output()
+    {
+        if output.status.success() {
+            for line in String::from_utf8_lossy(&output.stdout).lines() {
+                if let Ok(pid) = line.trim().parse::<u32>() {
+                    if pid > 0 && !pids.contains(&pid) {
+                        pids.push(pid);
+                    }
+                }
+            }
         }
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        // Proto  Local  Foreign  State  PID
-        if parts.len() < 5 {
-            continue;
-        }
-        let local = parts[1];
-        if !suffixes.iter().any(|s| local.eq_ignore_ascii_case(s)) {
-            continue;
-        }
-        if let Ok(pid) = parts[parts.len() - 1].parse::<u32>() {
-            if pid > 0 && !pids.contains(&pid) {
-                pids.push(pid);
+    }
+
+    // Fallback: netstat (works when Get-NetTCPConnection is unavailable).
+    if let Ok(output) = Command::new("netstat").args(["-ano"]).output() {
+        if output.status.success() {
+            let text = String::from_utf8_lossy(&output.stdout);
+            let needle = format!(":{port}");
+            for line in text.lines() {
+                let line = line.trim();
+                if !line.contains("LISTENING") || !line.contains(&needle) {
+                    continue;
+                }
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() < 5 {
+                    continue;
+                }
+                let local = parts[1];
+                if !(local.ends_with(&needle)
+                    || local.eq_ignore_ascii_case(&format!("127.0.0.1:{port}"))
+                    || local.eq_ignore_ascii_case(&format!("0.0.0.0:{port}")))
+                {
+                    continue;
+                }
+                if let Ok(pid) = parts[parts.len() - 1].parse::<u32>() {
+                    if pid > 0 && !pids.contains(&pid) {
+                        pids.push(pid);
+                    }
+                }
             }
         }
     }
@@ -248,19 +278,26 @@ fn reclaim_port(app: &tauri::AppHandle) {
         let _ = Command::new(&path).arg("stop").output();
     }
 
-    for pid in pids_listening_on_port(LISTEN_PORT) {
-        kill_pid(pid);
+    // Kill LISTEN owners first (often python.exe from `uv tool`, not navbe.exe).
+    for _ in 0..3 {
+        let pids = pids_listening_on_port(LISTEN_PORT);
+        if pids.is_empty() {
+            break;
+        }
+        for pid in pids {
+            kill_pid(pid);
+        }
+        thread::sleep(Duration::from_millis(300));
     }
 
     #[cfg(windows)]
     {
-        // Last resort: any leftover navbe serve binary.
         let _ = Command::new("taskkill")
             .args(["/F", "/IM", "navbe.exe", "/T"])
             .output();
     }
 
-    let _ = wait_until_unhealthy(Duration::from_secs(10));
+    let _ = wait_until_unhealthy(Duration::from_secs(8));
 }
 
 fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), String> {
@@ -314,10 +351,21 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
     *state.attached.lock().unwrap() = false;
     *state.log_path.lock().unwrap() = Some(log_path.display().to_string());
 
-    if !wait_until_ready(Duration::from_secs(60)) {
+    // Cold start of a ready sidecar is usually ~2–5s; keep a shorter ceiling.
+    if !wait_until_ready(Duration::from_secs(25)) {
         if let Some(mut child) = state.child.lock().unwrap().take() {
             let _ = child.kill();
             let _ = child.wait();
+        }
+        // One more reclaim+hint if a foreign /health is still answering.
+        if health_ok() && !version_ok() {
+            reclaim_port(app);
+            return Err(format!(
+                "port {LISTEN_PORT} still has an old Navbe (health OK, no /api/v1/version). \
+                 Closed leftover python/navbe listeners; click Restart engine, or run \
+                 resources\\stop-all.cmd. Log: {}",
+                log_path.display()
+            ));
         }
         return Err(format!(
             "navbe serve did not become ready (need /health + /api/v1/version \
@@ -341,8 +389,8 @@ fn ensure_daemon(app: &tauri::AppHandle, state: &DaemonState) {
     }
 
     if packaged && daemon_ready() {
-        // Fast relaunch: engine we left running after last close is fine.
-        *state.attached.lock().unwrap() = true;
+        // Fast relaunch: leftover owned engine — still "local", not a foreign attach.
+        *state.attached.lock().unwrap() = false;
         *state.error.lock().unwrap() = None;
         *state.log_path.lock().unwrap() = Some(default_log_path().display().to_string());
         *state.booting.lock().unwrap() = false;
@@ -379,6 +427,29 @@ fn daemon_status(state: State<'_, DaemonState>) -> DaemonStatus {
         log_path: state.log_path.lock().unwrap().clone(),
         error: state.error.lock().unwrap().clone(),
     }
+}
+
+/// Force reclaim of :8000 and (re)start the owned sidecar. UI "Restart engine".
+#[tauri::command]
+fn daemon_restart(app: tauri::AppHandle, state: State<'_, DaemonState>) -> DaemonStatus {
+    *state.booting.lock().unwrap() = true;
+    *state.error.lock().unwrap() = None;
+    // Drop our previous child handle without requiring it to be the listener.
+    if let Some(mut child) = state.child.lock().unwrap().take() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    reclaim_port(&app);
+    match spawn_sidecar(&app, &state) {
+        Ok(()) => {
+            *state.error.lock().unwrap() = None;
+        }
+        Err(err) => {
+            *state.error.lock().unwrap() = Some(err);
+        }
+    }
+    *state.booting.lock().unwrap() = false;
+    daemon_status(state)
 }
 
 /// Proxy REST to the local daemon from Rust so the webview never hits CORS.
@@ -442,7 +513,7 @@ pub fn run() {
             // Uninstall hooks stop navbe.exe via resources/stop-all.cmd.
             if let tauri::WindowEvent::Destroyed = event {}
         })
-        .invoke_handler(tauri::generate_handler![daemon_status, api_request])
+        .invoke_handler(tauri::generate_handler![daemon_status, daemon_restart, api_request])
         .run(tauri::generate_context!())
         .expect("error while running Navbe Desktop");
 }
