@@ -16,6 +16,7 @@ import type {
   FlowSpec,
   StepCatalogEntry,
 } from "../api/types";
+import Button from "../components/ui/Button";
 import FlowCanvas from "./FlowCanvas";
 import Inspector from "./Inspector";
 import { layoutWithDagre } from "./layout";
@@ -62,6 +63,7 @@ export default function FlowEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState(!isNew);
+  const [dirty, setDirty] = useState(isNew);
 
   const stepTypes = useMemo(() => Object.keys(stepCatalog).sort(), [stepCatalog]);
 
@@ -102,6 +104,7 @@ export default function FlowEditor({
     persistLayout();
     savePositions(spec.flow_id, positionsFromNodes(nodes));
     setCreated(true);
+    setDirty(false);
     void qc.invalidateQueries({ queryKey: ["flows"] });
     return spec;
   }
@@ -130,15 +133,10 @@ export default function FlowEditor({
   });
 
   const runFlow = useMutation({
-    mutationFn: async (andSave: boolean) => {
-      if (andSave || !created) {
-        const spec = await persistSpec();
-        const run = await api.startRun(spec.flow_id);
-        return { flowId: spec.flow_id, run };
-      }
-      if (!meta.flow_id.trim()) throw new Error("Flow ID is required");
-      const run = await api.startRun(meta.flow_id);
-      return { flowId: meta.flow_id, run };
+    mutationFn: async () => {
+      const spec = dirty || !created ? await persistSpec() : currentSpec();
+      const run = await api.startRun(spec.flow_id);
+      return { flowId: spec.flow_id, run };
     },
     onSuccess: ({ flowId, run }) => {
       setMessage("Run started");
@@ -151,6 +149,7 @@ export default function FlowEditor({
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      setDirty(true);
       setEdges((eds) =>
         addEdge(
           {
@@ -178,6 +177,7 @@ export default function FlowEditor({
         position: position ?? { x: 80 + nodes.length * 24, y: 80 + nodes.length * 24 },
         data: { step_type: stepType, config: {}, isEntry: false },
       };
+      setDirty(true);
       setNodes((nds) => {
         const withNew = [...nds, next];
         if (!meta.entry_node && withNew.length === 1) {
@@ -209,6 +209,7 @@ export default function FlowEditor({
     nodeId: string,
     patch: Partial<StepNodeData> & { id?: string },
   ): void {
+    setDirty(true);
     const newId = patch.id;
     setNodes((nds) => {
       let next = nds.map((n) => {
@@ -239,11 +240,13 @@ export default function FlowEditor({
   }
 
   function onSetEntry(nodeId: string): void {
+    setDirty(true);
     setMeta((m) => ({ ...m, entry_node: nodeId }));
     setNodes((nds) => markEntryFlags(nds, nodeId));
   }
 
   function onEdgeCondition(edgeId: string, condition: string | null): void {
+    setDirty(true);
     setEdges((eds) =>
       eds.map((e) =>
         e.id === edgeId
@@ -254,6 +257,7 @@ export default function FlowEditor({
   }
 
   function onConnectorUpsert(alias: string, inst: ConnectorInstanceConfig): void {
+    setDirty(true);
     setMeta((m) => ({
       ...m,
       connectors: { ...m.connectors, [alias]: inst },
@@ -261,9 +265,21 @@ export default function FlowEditor({
   }
 
   function onConnectorRemove(alias: string): void {
+    setDirty(true);
     setMeta((m) => {
       const connectors = { ...m.connectors };
       delete connectors[alias];
+      return { ...m, connectors };
+    });
+  }
+
+  function onConnectorRename(from: string, to: string): void {
+    setDirty(true);
+    setMeta((m) => {
+      if (!m.connectors[from] || m.connectors[to]) return m;
+      const connectors = { ...m.connectors };
+      connectors[to] = connectors[from];
+      delete connectors[from];
       return { ...m, connectors };
     });
   }
@@ -275,9 +291,7 @@ export default function FlowEditor({
     setMeta((m) => ({ ...m, entry_node: fallback }));
   }, [nodes, meta.entry_node]);
 
-  const title = created
-    ? meta.name || meta.flow_id || "Flow"
-    : meta.name || "New flow";
+  const title = meta.name || meta.flow_id || "Flow";
   const canRun = Boolean(meta.flow_id.trim()) && nodes.length > 0;
 
   return (
@@ -286,69 +300,55 @@ export default function FlowEditor({
         <div className="flex items-center gap-2 min-w-0">
           <div className="min-w-0">
             <h2 className="text-lg font-medium truncate">{title}</h2>
-            {meta.flow_id ? (
-              <code className="text-xs muted">{meta.flow_id}</code>
-            ) : (
-              <span className="text-xs muted">Set Flow ID in the Flow tab</span>
-            )}
+            <code className="text-xs muted">{meta.flow_id}</code>
+            {dirty && <span className="text-xs muted ml-2">unsaved</span>}
           </div>
-          {message && <span className="text-emerald-300 text-sm shrink-0">{message}</span>}
+          {message && <span className="text-[var(--ok)] text-sm shrink-0">{message}</span>}
           {error && <span className="error text-sm truncate">{error}</span>}
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
-          <button type="button" className="btn-ghost" onClick={applyAutoLayout}>
+          <Button variant="ghost" onClick={applyAutoLayout}>
             Auto-layout
-          </button>
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => validate.mutate()}
-            disabled={validate.isPending}
-          >
+          </Button>
+          <Button variant="ghost" onClick={() => validate.mutate()} disabled={validate.isPending}>
             Validate
-          </button>
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-          >
+          </Button>
+          <Button variant="ghost" onClick={() => save.mutate()} disabled={save.isPending}>
             Save
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => runFlow.mutate(true)}
+          </Button>
+          <Button
+            onClick={() => runFlow.mutate()}
             disabled={!canRun || runFlow.isPending}
-            title="Save current graph, then start a run"
+            title="Save if needed, then start a run"
           >
-            {runFlow.isPending ? "Starting…" : created ? "Save & Run" : "Save & Run"}
-          </button>
-          {created && (
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => runFlow.mutate(false)}
-              disabled={!canRun || runFlow.isPending}
-              title="Run the last saved version without saving local edits"
-            >
-              Run saved
-            </button>
-          )}
-          <button type="button" className="btn-ghost" onClick={onClose}>
+            {runFlow.isPending ? "Starting…" : "Run"}
+          </Button>
+          <Button variant="ghost" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="flow-editor__body">
-        <Palette stepTypes={stepTypes} onAdd={(t) => addStep(t)} />
+        <Palette
+          stepTypes={stepTypes}
+          titles={Object.fromEntries(
+            stepTypes.map((t) => [t, stepCatalog[t]?.title ?? t]),
+          )}
+          onAdd={(t) => addStep(t)}
+        />
         <div className="flow-canvas-wrap">
           <FlowCanvas
             nodes={nodes}
             edges={edges as Edge<FlowEdgeData>[]}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
+            onNodesChange={(c) => {
+              setDirty(true);
+              onNodesChange(c);
+            }}
+            onEdgesChange={(c) => {
+              setDirty(true);
+              onEdgesChange(c);
+            }}
             onConnect={onConnect}
             onSelectionChange={onSelectionChange}
             onDropStep={(t, pos) => addStep(t, pos)}
@@ -359,7 +359,7 @@ export default function FlowEditor({
               <p className="font-medium">Start with a step</p>
               <p className="muted text-sm">
                 Click a step on the left, or drag it onto the canvas. Connect steps by dragging from
-                the bottom handle to the next top handle.
+                the bottom handle to the next top handle. Attach connectors in the right panel.
               </p>
             </div>
           )}
@@ -372,6 +372,7 @@ export default function FlowEditor({
           stepCatalog={stepCatalog}
           connectorCatalog={connectorCatalog}
           onMetaChange={(patch) => {
+            setDirty(true);
             setMeta((m) => {
               const next = { ...m, ...patch };
               if (patch.entry_node != null) {
@@ -385,6 +386,7 @@ export default function FlowEditor({
           onSetEntry={onSetEntry}
           onConnectorUpsert={onConnectorUpsert}
           onConnectorRemove={onConnectorRemove}
+          onConnectorRename={onConnectorRename}
         />
       </div>
     </div>

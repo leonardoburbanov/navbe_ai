@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { RunState, ScheduleSpec } from "../api/types";
+import PageHeader from "../components/ui/PageHeader";
 
 /** Schedules CRUD + enable/disable + per-schedule runs. */
 export default function SchedulesPage() {
@@ -54,7 +56,18 @@ export default function SchedulesPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Schedules</h1>
+      <PageHeader
+        title="Schedules"
+        subtitle={
+          <>
+            Recurring triggers while the engine is up. Inspect fired runs on{" "}
+            <Link className="text-[var(--signal)]" to="/runs">
+              Runs
+            </Link>
+            .
+          </>
+        }
+      />
 
       <form className="card space-y-3" onSubmit={onSubmit}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import mermaid from "mermaid";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { RunState } from "../api/types";
-import { statusTone } from "../lib/runsNav";
+import Alert from "../components/ui/Alert";
+import Button from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
+import PageHeader from "../components/ui/PageHeader";
+import StatusBadge from "../components/ui/StatusBadge";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
@@ -19,10 +23,11 @@ export default function RunsPage() {
   const [selected, setSelected] = useState<RunState | null>(null);
   const [diagramSvg, setDiagramSvg] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [expandedStep, setExpandedStep] = useState<string | null>(null);
 
   useEffect(() => {
     if (paramFlow !== flowId) setFlowId(paramFlow);
-  }, [paramFlow]); // eslint-disable-line react-hooks/exhaustive-deps -- sync URL → local
+  }, [paramFlow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runs = useQuery({
     queryKey: ["runs", flowId || "all"],
@@ -65,7 +70,6 @@ export default function RunsPage() {
       .catch(() => setDiagramSvg(""));
   }, [selected]);
 
-  // Live-poll selected run while active.
   useEffect(() => {
     if (!selected) return;
     if (!["running", "paused", "pending"].includes(selected.status)) return;
@@ -143,12 +147,11 @@ export default function RunsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Runs</h1>
-        <p className="muted text-sm mt-1">
-          Start a flow on demand, watch status, then inspect steps when it finishes.
-        </p>
-      </div>
+      <PageHeader
+        title="Results"
+        subtitle="Every time you press Run, it shows up here."
+      />
+
       <div className="card flex flex-wrap items-end gap-3">
         <label className="field mb-0 min-w-[220px]">
           <span>Flow</span>
@@ -161,16 +164,11 @@ export default function RunsPage() {
             ))}
           </select>
         </label>
-        <button
-          className="btn"
-          type="button"
-          disabled={!flowId || start.isPending}
-          onClick={() => start.mutate()}
-        >
+        <Button disabled={!flowId || start.isPending} onClick={() => start.mutate()}>
           {start.isPending ? "Starting…" : "Start run"}
-        </button>
+        </Button>
       </div>
-      {error && <p className="error text-sm">{error}</p>}
+      {error && <Alert tone="error">{error}</Alert>}
 
       <div className="card">
         <table className="table">
@@ -194,31 +192,27 @@ export default function RunsPage() {
                 </td>
                 <td>{run.flow_id}</td>
                 <td>
-                  <span className={`status-pill status-pill--${statusTone(run.status)}`}>
-                    {run.status}
-                  </span>
+                  <StatusBadge status={run.status} />
                 </td>
                 <td className="text-sm muted">{formatWhen(run.updated_at)}</td>
                 <td>
-                  <button
-                    className="btn-ghost"
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => refreshDetail.mutate(run.run_id)}
                   >
                     Open
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
             {(runs.data?.runs ?? []).length === 0 && (
               <tr>
                 <td colSpan={5}>
-                  <div className="empty-state">
-                    <p className="font-medium">No runs yet</p>
-                    <p className="muted text-sm">
-                      Pick a flow above and click Start run, or use Run on the Flows page.
-                    </p>
-                  </div>
+                  <EmptyState
+                    title="No results yet"
+                    description="Go to Home and press “Run starter”, or open Flows and press Run."
+                  />
                 </td>
               </tr>
             )}
@@ -232,9 +226,7 @@ export default function RunsPage() {
             <div>
               <h2 className="text-lg font-medium flex items-center gap-2 flex-wrap">
                 <span>Run detail</span>
-                <span className={`status-pill status-pill--${statusTone(selected.status)}`}>
-                  {selected.status}
-                </span>
+                <StatusBadge status={selected.status} />
               </h2>
               <p className="muted text-sm">
                 <code>{selected.run_id}</code> · {selected.flow_id}
@@ -244,40 +236,32 @@ export default function RunsPage() {
               {(selected.status === "running" ||
                 selected.status === "paused" ||
                 selected.status === "pending") && (
-                <button
-                  className="btn-danger"
-                  type="button"
-                  onClick={() => cancel.mutate(selected.run_id)}
-                >
+                <Button variant="danger" onClick={() => cancel.mutate(selected.run_id)}>
                   Cancel
-                </button>
+                </Button>
               )}
-              <button
-                className="btn-ghost"
-                type="button"
-                onClick={() => refreshDetail.mutate(selected.run_id)}
-              >
+              <Button variant="ghost" onClick={() => refreshDetail.mutate(selected.run_id)}>
                 Refresh
-              </button>
+              </Button>
             </div>
           </div>
-          {selected.error && <p className="error text-sm">{selected.error}</p>}
+          {selected.error && (
+            <Alert tone="error">
+              <strong>Run failed</strong>
+              <pre className="mt-2 whitespace-pre-wrap text-xs">{selected.error}</pre>
+            </Alert>
+          )}
           {selected.status === "paused" && (
             <div className="flex gap-2">
-              <button
-                className="btn"
-                type="button"
-                onClick={() => resume.mutate({ runId: selected.run_id, approved: true })}
-              >
+              <Button onClick={() => resume.mutate({ runId: selected.run_id, approved: true })}>
                 Approve
-              </button>
-              <button
-                className="btn-ghost"
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => resume.mutate({ runId: selected.run_id, approved: false })}
               >
                 Reject
-              </button>
+              </Button>
             </div>
           )}
           <table className="table">
@@ -287,24 +271,51 @@ export default function RunsPage() {
                 <th>Step</th>
                 <th>Status</th>
                 <th>Latency</th>
+                <th />
               </tr>
             </thead>
             <tbody>
-              {(selected.steps ?? []).map((step) => (
-                <tr key={step.node_id}>
-                  <td>{step.node_id}</td>
-                  <td>{step.step_type}</td>
-                  <td>
-                    <span className={`status-pill status-pill--${statusTone(step.status)}`}>
-                      {step.status}
-                    </span>
-                  </td>
-                  <td>{step.latency_ms != null ? `${step.latency_ms} ms` : "—"}</td>
-                </tr>
-              ))}
+              {(selected.steps ?? []).map((step) => {
+                const failed = step.status === "failed" || Boolean(step.error);
+                const open = expandedStep === step.node_id;
+                return (
+                  <Fragment key={step.node_id}>
+                    <tr>
+                      <td>{step.node_id}</td>
+                      <td>{step.step_type}</td>
+                      <td>
+                        <StatusBadge status={step.status} />
+                      </td>
+                      <td>{step.latency_ms != null ? `${step.latency_ms} ms` : "—"}</td>
+                      <td>
+                        {failed && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setExpandedStep(open ? null : step.node_id)
+                            }
+                          >
+                            {open ? "Hide" : "Error"}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                    {open && step.error && (
+                      <tr>
+                        <td colSpan={5}>
+                          <Alert tone="error">
+                            <pre className="whitespace-pre-wrap text-xs">{step.error}</pre>
+                          </Alert>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
               {(selected.steps ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={4} className="muted">
+                  <td colSpan={5} className="muted">
                     Steps appear as the run progresses…
                   </td>
                 </tr>
@@ -313,7 +324,7 @@ export default function RunsPage() {
           </table>
           {diagramSvg && (
             <div
-              className="rounded-lg border border-slate-700 bg-slate-950 p-3 overflow-auto"
+              className="rounded-lg border border-[var(--line)] bg-[var(--bg)] p-3 overflow-auto"
               dangerouslySetInnerHTML={{ __html: diagramSvg }}
             />
           )}
@@ -323,7 +334,7 @@ export default function RunsPage() {
   );
 }
 
-/** Short relative-ish timestamp for the table. */
+/** Short locale timestamp for the table. */
 function formatWhen(iso: string): string {
   try {
     const d = new Date(iso);

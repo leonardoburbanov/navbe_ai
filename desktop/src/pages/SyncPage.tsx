@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import { api } from "../api/client";
+import PageHeader from "../components/ui/PageHeader";
 
 /** GitHub device-flow login + workspace sync controls. */
 export default function SyncPage() {
@@ -99,7 +100,10 @@ export default function SyncPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Sync</h1>
+      <PageHeader
+        title="Sync"
+        subtitle="GitHub device login and push/pull of flow definitions for the workspace."
+      />
 
       <div className="card space-y-3">
         <h2 className="text-lg font-medium">GitHub auth</h2>

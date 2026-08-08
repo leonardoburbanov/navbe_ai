@@ -195,6 +195,18 @@ async def auth_github_status(
     return status.model_dump()
 
 
+@router.get("/auth/github/repos")
+async def auth_github_repos(
+    auth: Annotated[GitHubAuthService, Depends(get_github_auth_service)],
+) -> dict[str, Any]:
+    """List repos the installed GitHub App can access (for sync_connect picker)."""
+    try:
+        repos = await auth.list_accessible_repos()
+    except NavbeError as exc:
+        raise to_http_exception(exc) from exc
+    return {"repos": [repo.model_dump() for repo in repos]}
+
+
 @router.delete("/auth/github")
 async def auth_github_logout(
     auth: Annotated[GitHubAuthService, Depends(get_github_auth_service)],

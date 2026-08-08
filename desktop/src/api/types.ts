@@ -51,13 +51,18 @@ export interface ValidationResult {
 
 export interface StepCatalogEntry {
   step_type: string;
+  title?: string;
+  description?: string;
   config_schema: JsonSchema;
 }
 
 export interface ConnectorCatalogEntry {
   connector_type: string;
+  title?: string;
+  description?: string;
   config_schema: JsonSchema;
   actions: string[];
+  required_secrets?: string[];
 }
 
 export interface CredentialItem {

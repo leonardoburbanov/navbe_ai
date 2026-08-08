@@ -2,11 +2,12 @@ const MIME = "application/navbe-step";
 
 interface PaletteProps {
   stepTypes: string[];
+  titles?: Record<string, string>;
   onAdd: (stepType: string) => void;
 }
 
 /** Left rail: click or drag catalog step types onto the canvas. */
-export default function Palette({ stepTypes, onAdd }: PaletteProps) {
+export default function Palette({ stepTypes, titles = {}, onAdd }: PaletteProps) {
   return (
     <aside className="flow-palette">
       <div className="flow-palette__heading">Add a step</div>
@@ -24,7 +25,7 @@ export default function Palette({ stepTypes, onAdd }: PaletteProps) {
               }}
               onClick={() => onAdd(t)}
             >
-              <span className="flow-palette__label">{humanize(t)}</span>
+              <span className="flow-palette__label">{titles[t] ?? humanize(t)}</span>
               <span className="flow-palette__id">{t}</span>
             </button>
           </li>
