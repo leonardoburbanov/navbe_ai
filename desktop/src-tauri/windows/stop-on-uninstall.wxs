@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stop Navbe desktop + daemon before MSI install/uninstall file ops. -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <CustomAction
+      Id="StopNavbeAll"
+      Directory="INSTALLDIR"
+      ExeCommand="cmd.exe /c if exist &quot;[INSTALLDIR]resources\stop-all.cmd&quot; (call &quot;[INSTALLDIR]resources\stop-all.cmd&quot;) else (taskkill /F /IM navbe-desktop.exe /T &amp; taskkill /F /IM navbe.exe /T)"
+      Execute="immediate"
+      Impersonate="yes"
+      Return="ignore"
+    />
+    <InstallExecuteSequence>
+      <!-- One schedule only — WiX forbids the same CustomAction Id twice. -->
+      <Custom Action="StopNavbeAll" Before="InstallValidate">1</Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

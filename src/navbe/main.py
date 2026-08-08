@@ -23,6 +23,7 @@ from navbe.dependencies import (
     get_secrets_service,
     get_sync_service,
 )
+from navbe.domains.flows.defaults import ensure_default_flows
 from navbe.domains.flows.repository import metadata as flows_metadata
 from navbe.domains.schedules.repository import metadata as schedules_metadata
 from navbe.mcp_app.server import create_mcp_server
@@ -49,6 +50,8 @@ def create_app() -> FastAPI:
             async with engine.begin() as conn:
                 await conn.run_sync(flows_metadata.create_all)
                 await conn.run_sync(schedules_metadata.create_all)
+            # Fresh installs: seed starter + Langfuse base flows (idempotent).
+            await ensure_default_flows(get_flow_service())
             scheduler = get_scheduler_loop()
             scheduler.start()
             try:

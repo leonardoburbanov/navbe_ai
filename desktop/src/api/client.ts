@@ -1,5 +1,6 @@
-/** Thin fetch client for the local Navbe REST API. */
+/** Thin client for the local Navbe REST API (Tauri proxy, fetch fallback). */
 
+import { invoke } from "@tauri-apps/api/core";
 import type {
   ConnectorCatalogEntry,
   CredentialItem,
@@ -14,28 +15,80 @@ import type {
 
 const BASE_URL = "http://127.0.0.1:8000";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    let detail = response.statusText;
-    try {
-      const body = await response.json();
-      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
-    } catch {
-      /* keep statusText */
-    }
-    throw new Error(`${response.status}: ${detail}`);
-  }
-  if (response.status === 204) {
+interface ApiProxyResponse {
+  status: number;
+  body: string;
+}
+
+function parseBody<T>(status: number, raw: string): T {
+  if (status === 204 || raw.length === 0) {
     return undefined as T;
   }
-  return (await response.json()) as T;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    throw new Error(`${status}: ${raw || "empty response"}`);
+  }
+  if (status < 200 || status >= 300) {
+    const detail =
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "detail" in parsed &&
+      (parsed as { detail: unknown }).detail !== undefined
+        ? typeof (parsed as { detail: unknown }).detail === "string"
+          ? String((parsed as { detail: unknown }).detail)
+          : JSON.stringify((parsed as { detail: unknown }).detail)
+        : JSON.stringify(parsed);
+    throw new Error(`${status}: ${detail}`);
+  }
+  return parsed as T;
+}
+
+async function requestViaTauri<T>(
+  path: string,
+  method: string,
+  body?: string,
+): Promise<T> {
+  const result = await invoke<ApiProxyResponse>("api_request", {
+    method,
+    path,
+    body: body ?? null,
+  });
+  return parseBody<T>(result.status, result.body);
+}
+
+async function requestViaFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    ...((init?.headers as Record<string, string> | undefined) ?? {}),
+  };
+  // Only set JSON content-type when there is a body (avoids CORS preflight on GET).
+  if (init?.body !== undefined && init.body !== null) {
+    headers["Content-Type"] = "application/json";
+  }
+  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  const raw = response.status === 204 ? "" : await response.text();
+  return parseBody<T>(response.status, raw);
+}
+
+function isTauriRuntime(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const body =
+    typeof init?.body === "string"
+      ? init.body
+      : init?.body != null
+        ? String(init.body)
+        : undefined;
+
+  // In the packaged / `tauri dev` webview, always proxy via Rust (no CORS).
+  if (isTauriRuntime()) {
+    return requestViaTauri<T>(path, method, body);
+  }
+  return requestViaFetch<T>(path, init);
 }
 
 export const api = {

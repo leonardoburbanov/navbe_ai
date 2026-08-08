@@ -84,4 +84,8 @@ def bootstrap_cmd(
     console.print(f"  MCP URL  {default_mcp_url(host=host, port=port)}")
     console.print("  Restart Cursor / Claude Desktop so they pick up the config.")
     console.print("  Secrets: [cyan]navbe secret set KEY --app NAME[/cyan]")
+    console.print(
+        "  Defaults: flows [cyan]starter[/cyan] (HTTP ping) + "
+        "[cyan]langfuse_traces[/cyan] (set LANGFUSE_* secrets first)"
+    )
     console.print("  Status:  [cyan]navbe status[/cyan]  Stop: [cyan]navbe stop[/cyan]")

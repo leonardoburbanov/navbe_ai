@@ -112,6 +112,7 @@ export interface ScheduleSpec {
 export interface DaemonStatus {
   running: boolean;
   attached: boolean;
+  booting: boolean;
   base_url: string;
   mcp_url: string;
   log_path: string | null;

@@ -35,7 +35,15 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["resources/navbe/"]
+    "resources": ["resources/navbe/", "resources/stop-all.cmd"],
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh"
+      },
+      "wix": {
+        "fragmentPaths": ["./windows/stop-on-uninstall.wxs"]
+      }
+    }
   },
   "plugins": {}
 }

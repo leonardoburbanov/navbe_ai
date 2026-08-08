@@ -14,6 +14,7 @@ export default function HomePage() {
         return {
           running: false,
           attached: false,
+          booting: false,
           base_url: "http://127.0.0.1:8000",
           mcp_url: "http://127.0.0.1:8000/mcp",
           log_path: null,
@@ -31,7 +32,14 @@ export default function HomePage() {
   });
 
   const status = daemon.data;
-  const healthy = health.isSuccess && health.data?.status === "ok";
+  const healthy =
+    Boolean(status?.running) || (health.isSuccess && health.data?.status === "ok");
+  const booting = Boolean(status?.booting) && !healthy;
+  const label = healthy
+    ? "Daemon healthy"
+    : booting
+      ? "Starting daemon…"
+      : "Waiting for daemon…";
 
   return (
     <div className="space-y-4">
@@ -41,7 +49,7 @@ export default function HomePage() {
           <span
             className={`inline-block h-3 w-3 rounded-full ${healthy ? "bg-emerald-400" : "bg-amber-400"}`}
           />
-          <strong>{healthy ? "Daemon healthy" : "Waiting for daemon…"}</strong>
+          <strong>{label}</strong>
         </div>
         {status?.error && <p className="error text-sm">{status.error}</p>}
         <dl className="grid grid-cols-[140px_1fr] gap-y-2 text-sm">

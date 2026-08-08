@@ -19,16 +19,25 @@ struct DaemonState {
     attached: Mutex<bool>,
     error: Mutex<Option<String>>,
     log_path: Mutex<Option<String>>,
+    /// False until the first ensure_daemon attempt finishes.
+    booting: Mutex<bool>,
 }
 
 #[derive(Serialize, Clone)]
 struct DaemonStatus {
     running: bool,
     attached: bool,
+    booting: bool,
     base_url: String,
     mcp_url: String,
     log_path: Option<String>,
     error: Option<String>,
+}
+
+#[derive(Serialize)]
+struct ApiProxyResponse {
+    status: u16,
+    body: String,
 }
 
 fn health_ok() -> bool {
@@ -72,7 +81,7 @@ fn resolve_sidecar_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         }
     }
 
-    // Dev fallback: use `navbe` / `uv run navbe` from PATH in a checkout.
+    // Dev fallback: use `navbe` from PATH in a checkout.
     if let Ok(path) = which_navbe() {
         return Ok(path);
     }
@@ -85,7 +94,6 @@ fn resolve_sidecar_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 fn which_navbe() -> Result<PathBuf, String> {
-    // Try common Windows locations first via PATH lookup.
     let candidates = if cfg!(windows) {
         vec!["navbe.exe", "navbe.cmd", "navbe"]
     } else {
@@ -131,6 +139,11 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
         .stdout(Stdio::from(log_file))
         .stderr(Stdio::from(log_err));
 
+    // PyInstaller onedir resolves _internal next to the exe; keep cwd there.
+    if let Some(dir) = exe.parent() {
+        cmd.current_dir(dir);
+    }
+
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -147,8 +160,8 @@ fn spawn_sidecar(app: &tauri::AppHandle, state: &DaemonState) -> Result<(), Stri
     *state.attached.lock().unwrap() = false;
     *state.log_path.lock().unwrap() = Some(log_path.display().to_string());
 
-    if !wait_until_healthy(Duration::from_secs(30)) {
-        // Best-effort cleanup of a hung sidecar.
+    // Cold PyInstaller start can exceed 30s on first launch.
+    if !wait_until_healthy(Duration::from_secs(60)) {
         if let Some(mut child) = state.child.lock().unwrap().take() {
             let _ = child.kill();
             let _ = child.wait();
@@ -166,6 +179,7 @@ fn ensure_daemon(app: &tauri::AppHandle, state: &DaemonState) {
         *state.attached.lock().unwrap() = true;
         *state.error.lock().unwrap() = None;
         *state.log_path.lock().unwrap() = Some(default_log_path().display().to_string());
+        *state.booting.lock().unwrap() = false;
         return;
     }
     match spawn_sidecar(app, state) {
@@ -176,20 +190,57 @@ fn ensure_daemon(app: &tauri::AppHandle, state: &DaemonState) {
             *state.error.lock().unwrap() = Some(err);
         }
     }
+    *state.booting.lock().unwrap() = false;
 }
 
 #[tauri::command]
 fn daemon_status(state: State<'_, DaemonState>) -> DaemonStatus {
     let attached = *state.attached.lock().unwrap();
+    let booting = *state.booting.lock().unwrap();
     let running = health_ok();
     DaemonStatus {
         running,
         attached,
+        booting,
         base_url: BASE_URL.into(),
         mcp_url: MCP_URL.into(),
         log_path: state.log_path.lock().unwrap().clone(),
         error: state.error.lock().unwrap().clone(),
     }
+}
+
+/// Proxy REST to the local daemon from Rust so the webview never hits CORS.
+#[tauri::command]
+fn api_request(method: String, path: String, body: Option<String>) -> Result<ApiProxyResponse, String> {
+    let path = path.trim();
+    if !path.starts_with('/') {
+        return Err("path must start with /".into());
+    }
+    let url = format!("{BASE_URL}{path}");
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(60))
+        .build()
+        .map_err(|e| format!("http client: {e}"))?;
+
+    let mut builder = match method.to_uppercase().as_str() {
+        "GET" => client.get(&url),
+        "POST" => client.post(&url),
+        "PUT" => client.put(&url),
+        "DELETE" => client.delete(&url),
+        "PATCH" => client.patch(&url),
+        other => return Err(format!("unsupported method {other}")),
+    };
+
+    if let Some(payload) = body {
+        builder = builder
+            .header("Content-Type", "application/json")
+            .body(payload);
+    }
+
+    let response = builder.send().map_err(|e| format!("request failed: {e}"))?;
+    let status = response.status().as_u16();
+    let body = response.text().map_err(|e| format!("read body: {e}"))?;
+    Ok(ApiProxyResponse { status, body })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -201,6 +252,7 @@ pub fn run() {
             attached: Mutex::new(false),
             error: Mutex::new(None),
             log_path: Mutex::new(None),
+            booting: Mutex::new(true),
         })
         .setup(|app| {
             // Keep setup non-blocking: reqwest::blocking on the UI thread can
@@ -229,7 +281,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![daemon_status])
+        .invoke_handler(tauri::generate_handler![daemon_status, api_request])
         .run(tauri::generate_context!())
         .expect("error while running Navbe Desktop");
 }
